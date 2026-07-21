@@ -35,9 +35,11 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname, searchParams } = request.nextUrl
 
-  // 1. If any link lands with a Supabase auth ?code=... outside /api/auth/callback, intercept and send to callback handler
+  // 1. If any link lands with a Supabase auth ?code=... outside /api/auth/callback, intercept ONLY if no error is present
   const code = searchParams.get('code')
-  if (code && !pathname.startsWith('/api/auth/callback')) {
+  const hasError = searchParams.has('error') || searchParams.has('error_code') || searchParams.has('error_description')
+
+  if (code && !hasError && !pathname.startsWith('/api/auth/callback')) {
     const url = request.nextUrl.clone()
     url.pathname = '/api/auth/callback'
     return NextResponse.redirect(url)

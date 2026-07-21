@@ -18,6 +18,8 @@ export async function GET(request: Request) {
     }
   }
 
-  // Return to login with error
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+  // Redirect cleanly to /login?error=auth_callback_error without code to prevent infinite loops
+  const loginUrl = new URL('/login', origin)
+  loginUrl.searchParams.set('error', 'auth_callback_error')
+  return NextResponse.redirect(loginUrl)
 }
