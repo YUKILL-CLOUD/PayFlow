@@ -161,12 +161,12 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
             
             {/* Discard Dialog */}
             <AlertDialog open={isDiscardDialogOpen} onOpenChange={setIsDiscardDialogOpen}>
-              <AlertDialogTrigger asChild>
+              <AlertDialogTrigger render={
                 <Button variant="outline" size="sm" disabled={isDiscarding || isFinishing} className="text-destructive hover:bg-destructive/10">
                   {isDiscarding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
                   Discard Plan
                 </Button>
-              </AlertDialogTrigger>
+              } />
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Discard Payday Plan?</AlertDialogTitle>
@@ -185,12 +185,12 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
 
             {/* Lock & Finish Dialog */}
             <AlertDialog open={isLockDialogOpen} onOpenChange={setIsLockDialogOpen}>
-              <AlertDialogTrigger asChild>
+              <AlertDialogTrigger render={
                 <Button size="sm" disabled={isFinishing || isDiscarding}>
                   {isFinishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4 mr-1.5" />}
                   Lock & Finish
                 </Button>
-              </AlertDialogTrigger>
+              } />
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Lock & Finish Payday?</AlertDialogTitle>
