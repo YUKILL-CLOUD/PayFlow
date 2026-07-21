@@ -9,6 +9,17 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { 
   Loader2, 
@@ -37,6 +48,18 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
   const [isUpdating, setIsUpdating] = React.useState<string | null>(null)
   const [isFinishing, setIsFinishing] = React.useState(false)
   const [isDiscarding, setIsDiscarding] = React.useState(false)
+  const [isLockDialogOpen, setIsLockDialogOpen] = React.useState(false)
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = React.useState(false)
+
+  // Optimistic UI for checkboxes (instant visual feedback)
+  const [optimisticAllocations, toggleOptimistic] = React.useOptimistic(
+    allocations,
+    (state, payload: { id: string; is_completed: boolean }) => {
+      return state.map((alloc) =>
+        alloc.id === payload.id ? { ...alloc, is_completed: payload.is_completed } : alloc
+      )
+    }
+  )
 
   const walletsMap = React.useMemo(() => {
     const map = new Map<string, WalletType>()
@@ -44,31 +67,31 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
     return map
   }, [wallets])
 
-  // Group allocations by destination wallet
+  // Group optimistic allocations by destination wallet
   const groupedAllocations = React.useMemo(() => {
     const groups: Record<string, Allocation[]> = {}
-    allocations.forEach((alloc) => {
+    optimisticAllocations.forEach((alloc) => {
       const wid = alloc.wallet_id
       if (!groups[wid]) groups[wid] = []
       groups[wid].push(alloc)
     })
     return groups
-  }, [allocations])
+  }, [optimisticAllocations])
 
-  // Calculate statistics
+  // Calculate statistics using optimistic allocations
   const totalAmount = React.useMemo(() => {
-    return allocations.reduce((sum, item) => sum + item.amount, 0)
-  }, [allocations])
+    return optimisticAllocations.reduce((sum, item) => sum + item.amount, 0)
+  }, [optimisticAllocations])
 
   const completedAmount = React.useMemo(() => {
-    return allocations
+    return optimisticAllocations
       .filter(item => item.is_completed)
       .reduce((sum, item) => sum + item.amount, 0)
-  }, [allocations])
+  }, [optimisticAllocations])
 
   const completedCount = React.useMemo(() => {
-    return allocations.filter(item => item.is_completed).length
-  }, [allocations])
+    return optimisticAllocations.filter(item => item.is_completed).length
+  }, [optimisticAllocations])
 
   const progressPercentage = React.useMemo(() => {
     if (totalAmount <= 0) return 0
@@ -76,25 +99,25 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
   }, [completedAmount, totalAmount])
 
   const handleToggle = async (allocId: string, isChecked: boolean) => {
+    // Instantly update the checkbox UI
+    React.startTransition(() => {
+      toggleOptimistic({ id: allocId, is_completed: isChecked })
+    })
+
     setIsUpdating(allocId)
     const result = await toggleAllocationCompleteAction(allocId, isChecked)
     setIsUpdating(null)
 
-    if (result.success) {
-      toast.success(isChecked ? 'Transfer completed!' : 'Transfer marked incomplete.')
-    } else {
+    if (!result.success) {
       toast.error(result.message || 'Failed to update allocation state.')
     }
   }
 
   const handleLock = async () => {
-    if (completedCount < allocations.length) {
-      if (!confirm('You still have pending transfers. Lock this payday anyway?')) return
-    }
-
     setIsFinishing(true)
     const result = await lockPaydayAction(payday.id)
     setIsFinishing(false)
+    setIsLockDialogOpen(false)
 
     if (result.success) {
       toast.success(result.message || 'Payday locked and saved!')
@@ -104,11 +127,10 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
   }
 
   const handleDiscard = async () => {
-    if (!confirm('Are you absolutely sure you want to discard this payday plan? This will delete all allocations and draft logs.')) return
-
     setIsDiscarding(true)
     const result = await discardPaydayAction(payday.id)
     setIsDiscarding(false)
+    setIsDiscardDialogOpen(false)
 
     if (result.success) {
       toast.success(result.message || 'Plan discarded successfully!')
@@ -136,14 +158,55 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleDiscard} disabled={isDiscarding || isFinishing} className="text-destructive hover:bg-destructive/10">
-              {isDiscarding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
-              Discard Plan
-            </Button>
-            <Button size="sm" onClick={handleLock} disabled={isFinishing || isDiscarding}>
-              {isFinishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4 mr-1.5" />}
-              Lock & Finish
-            </Button>
+            
+            {/* Discard Dialog */}
+            <AlertDialog open={isDiscardDialogOpen} onOpenChange={setIsDiscardDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isDiscarding || isFinishing} className="text-destructive hover:bg-destructive/10">
+                  {isDiscarding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
+                  Discard Plan
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Discard Payday Plan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you absolutely sure you want to discard this payday plan? This will delete all allocations and draft logs permanently.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Discard Plan
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Lock & Finish Dialog */}
+            <AlertDialog open={isLockDialogOpen} onOpenChange={setIsLockDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" disabled={isFinishing || isDiscarding}>
+                  {isFinishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4 mr-1.5" />}
+                  Lock & Finish
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Lock & Finish Payday?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {completedCount < optimisticAllocations.length
+                      ? 'You still have pending transfers. Are you sure you want to lock and finalize this payday anyway?'
+                      : 'All transfers are complete! Are you ready to lock and finalize this payday plan?'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLock}>Lock & Finish</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
           </div>
         </div>
 
@@ -193,7 +256,6 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
 
               <div className="divide-y bg-background">
                 {items.sort((a, b) => a.execution_order - b.execution_order).map((item) => {
-                  const isUpdatingThis = isUpdating === item.id
                   return (
                     <div 
                       key={item.id} 
@@ -204,7 +266,7 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
                           id={`alloc-${item.id}`}
                           checked={item.is_completed}
                           onCheckedChange={(checked) => handleToggle(item.id, !!checked)}
-                          disabled={isUpdatingThis || isFinishing || isDiscarding}
+                          disabled={isFinishing || isDiscarding}
                           className="h-5 w-5 rounded border-muted-foreground/40 data-[state=checked]:bg-primary"
                         />
                         <div className="min-w-0">
