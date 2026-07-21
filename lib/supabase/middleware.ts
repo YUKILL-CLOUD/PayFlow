@@ -50,7 +50,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/register') ||
     pathname.startsWith('/forgot-password')
 
-  const isPublicRoute = pathname === '/' || isAuthRoute || pathname.startsWith('/reset-password')
+  const isPublicRoute = pathname === '/' || isAuthRoute || pathname.startsWith('/reset-password') || pathname.startsWith('/api/auth/callback')
 
   // Not authenticated + accessing protected route → redirect to login
   if (!user && !isPublicRoute) {
