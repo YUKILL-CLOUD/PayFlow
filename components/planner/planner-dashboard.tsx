@@ -82,8 +82,6 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
 
     if (result.success) {
       toast.success(isChecked ? 'Transfer completed!' : 'Transfer marked incomplete.')
-      // Auto-reload to fetch fresh status / locks
-      window.location.reload()
     } else {
       toast.error(result.message || 'Failed to update allocation state.')
     }
@@ -100,7 +98,6 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
 
     if (result.success) {
       toast.success(result.message || 'Payday locked and saved!')
-      window.location.reload()
     } else {
       toast.error(result.message || 'Failed to finish payday.')
     }
@@ -115,7 +112,6 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
 
     if (result.success) {
       toast.success(result.message || 'Plan discarded successfully!')
-      window.location.reload()
     } else {
       toast.error(result.message || 'Failed to discard plan.')
     }
