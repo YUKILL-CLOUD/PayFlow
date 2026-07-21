@@ -61,13 +61,15 @@ export async function registerAction(formData: FormData): Promise<ActionResult> 
     return { success: false, message: parsed.error.issues[0].message }
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+
   const supabase = await createClient()
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+      emailRedirectTo: `${baseUrl}/api/auth/callback`,
     },
   })
 
@@ -89,9 +91,11 @@ export async function forgotPasswordAction(formData: FormData): Promise<ActionRe
     return { success: false, message: parsed.error.issues[0].message }
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+
   const supabase = await createClient()
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=/reset-password`,
+    redirectTo: `${baseUrl}/api/auth/callback?next=/reset-password`,
   })
 
   if (error) {
