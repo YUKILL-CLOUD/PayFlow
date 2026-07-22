@@ -17,6 +17,7 @@ import type { Database } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/components/layout/sidebar-provider'
 import { Button } from '@/components/ui/button'
+import { PayFlowLogo } from '@/components/ui/payflow-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -49,16 +50,9 @@ export function DesktopSidebar({ user, profile }: DesktopSidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center h-14 px-3 border-b border-border">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">F</span>
-          </div>
-          {isOpen && (
-            <span className="font-semibold text-sm text-foreground truncate">
-              Financial OS
-            </span>
-          )}
-        </div>
+        <Link href="/planner" className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <PayFlowLogo size="sm" showText={isOpen} />
+        </Link>
         <Button
           variant="ghost"
           size="icon"

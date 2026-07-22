@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { LoginForm } from '@/components/auth/login-form'
 
 export const metadata: Metadata = {
-  title: 'Sign In — Financial OS',
-  description: 'Sign in to your Financial OS account to manage your payday plan.',
+  title: 'Sign In — PayFlow',
+  description: 'Sign in to your PayFlow account to manage your payday plan.',
 }
 
 export default function LoginPage() {

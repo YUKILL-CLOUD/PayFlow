@@ -3,7 +3,7 @@ import { WalletsClient } from '@/components/wallets/wallets-client'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
-  title: 'Financial OS — Wallets',
+  title: 'Storage Wallets',
   description: 'Manage your accounts and cash destinations.',
 }
 

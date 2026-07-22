@@ -3,7 +3,7 @@ import { FundsClient } from '@/components/funds/funds-client'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
-  title: 'Financial OS — Funds',
+  title: 'Savings Goals & Funds',
   description: 'Manage your savings goals and recurring allocations.',
 }
 

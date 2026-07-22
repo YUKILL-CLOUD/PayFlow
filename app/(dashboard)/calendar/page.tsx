@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { CalendarClient } from '@/components/calendar/calendar-client'
 
 export const metadata = {
-  title: 'Financial OS — Calendar View',
+  title: 'Payday Calendar View',
   description: 'Visual monthly financial calendar plotting paydays, bill due dates, and fund targets.',
 }
 

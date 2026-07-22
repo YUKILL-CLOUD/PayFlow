@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { RegisterForm } from '@/components/auth/register-form'
 
 export const metadata: Metadata = {
-  title: 'Create Account — Financial OS',
-  description: 'Create your Financial OS account and start planning your payday.',
+  title: 'Create Account — PayFlow',
+  description: 'Create your PayFlow account and start planning your payday.',
 }
 
 export default function RegisterPage() {

@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { ResetPasswordForm } from '@/components/auth/reset-password-form'
 
 export const metadata: Metadata = {
-  title: 'Set New Password — Financial OS',
-  description: 'Set a new password for your Financial OS account.',
+  title: 'Set New Password — PayFlow',
+  description: 'Set a new password for your PayFlow account.',
 }
 
 export default function ResetPasswordPage() {

@@ -6,8 +6,8 @@ import { SidebarProvider } from '@/components/layout/sidebar-provider'
 import { ResponsiveNavigation } from '@/components/navigation/responsive-navigation'
 
 export const metadata: Metadata = {
-  title: 'Financial OS',
-  description: 'Your personal payday planning system.',
+  title: 'Dashboard — PayFlow',
+  description: 'Manage your payday plans, bills, funds, and wallets in PayFlow.',
 }
 
 export default async function DashboardLayout({

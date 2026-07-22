@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { HistoryClient } from '@/components/history/history-client'
 
 export const metadata = {
-  title: 'Financial OS — Payday History',
+  title: 'Payday Snapshot History',
   description: 'View your past locked payday allocations.',
 }
 

@@ -3,9 +3,10 @@ import { redirect } from 'next/navigation'
 import { PlannerSetup } from '@/components/planner/planner-setup'
 import { PlannerDashboard } from '@/components/planner/planner-dashboard'
 import { DashboardHome } from '@/components/dashboard/dashboard-home'
+import { Metadata } from 'next'
 
-export const metadata = {
-  title: 'Financial OS — Payday Planner & Dashboard',
+export const metadata: Metadata = {
+  title: 'Payday Planner & Dashboard',
   description: 'Design and execute your payday allocation plan.',
 }
 

@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
 
 export const metadata: Metadata = {
-  title: 'Reset Password — Financial OS',
-  description: 'Reset your Financial OS account password.',
+  title: 'Reset Password — PayFlow',
+  description: 'Reset your PayFlow account password.',
 }
 
 export default function ForgotPasswordPage() {

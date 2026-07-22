@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { SettingsClient } from '@/components/settings/settings-client'
 
 export const metadata = {
-  title: 'Financial OS — Settings',
+  title: 'Account & Payday Settings',
   description: 'Manage your account and payday schedule preferences.',
 }
 

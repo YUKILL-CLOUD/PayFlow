@@ -3,7 +3,7 @@ import { BillsClient } from '@/components/bills/bills-client'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
-  title: 'Financial OS — Bills',
+  title: 'Upcoming Obligations & Bills',
   description: 'Manage your external obligations and repeating payments.',
 }
 
