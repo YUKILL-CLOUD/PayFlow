@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PayFlowLogo } from '@/components/ui/payflow-logo'
 
 interface MobileMoreSheetProps {
   open: boolean
@@ -37,11 +38,16 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8 pt-6">
-        <SheetHeader className="text-left mb-4">
-          <SheetTitle className="text-lg font-bold">More Options</SheetTitle>
-          <SheetDescription className="text-xs">
-            Access secondary management pages and settings.
-          </SheetDescription>
+        <SheetHeader className="text-left mb-4 flex flex-row items-center justify-between">
+          <div>
+            <SheetTitle className="text-lg font-bold flex items-center gap-2">
+              <span>More Options</span>
+            </SheetTitle>
+            <SheetDescription className="text-xs mt-0.5">
+              Access secondary management pages and settings.
+            </SheetDescription>
+          </div>
+          <PayFlowLogo size="sm" showText={false} />
         </SheetHeader>
 
         <div className="space-y-2">
@@ -61,15 +67,17 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <div className={cn(
-                    'h-9 w-9 rounded-lg flex items-center justify-center',
-                    isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-2 rounded-lg',
+                      isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    )}
+                  >
                     <Icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">{label}</p>
-                    <p className="text-[11px] text-muted-foreground">{description}</p>
+                    <p className="text-sm font-semibold leading-none">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{description}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />

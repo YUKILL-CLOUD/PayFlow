@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard,
   Wallet,
   PiggyBank,
   Receipt,
@@ -18,6 +17,7 @@ import type { Database } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { useSidebar } from './sidebar-provider'
 import { Button } from '@/components/ui/button'
+import { PayFlowLogo } from '@/components/ui/payflow-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -50,16 +50,9 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center h-14 px-3 border-b border-border">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">F</span>
-          </div>
-          {isOpen && (
-            <span className="font-semibold text-sm text-foreground truncate">
-              Financial OS
-            </span>
-          )}
-        </div>
+        <Link href="/planner" className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <PayFlowLogo size="sm" showText={isOpen} />
+        </Link>
         <Button
           variant="ghost"
           size="icon"
@@ -78,60 +71,73 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || pathname.startsWith(`${href}/`)
-          return (
-            <Tooltip key={href}>
-              <TooltipTrigger render={
-                <Link
-                  href={href}
-                  id={`nav-${label.toLowerCase()}`}
-                  className={cn(
-                    'flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                  )}
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                  {isOpen && <span className="truncate">{label}</span>}
-                </Link>
-              } />
-              {!isOpen && (
-                <TooltipContent side="right">
-                  <p>{label}</p>
-                </TooltipContent>
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const isActive =
+            pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const Icon = item.icon
+
+          const linkContent = (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                !isOpen && 'justify-center px-0'
               )}
-            </Tooltip>
+            >
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              {isOpen && <span className="truncate">{item.label}</span>}
+            </Link>
           )
+
+          if (!isOpen) {
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger render={linkContent} />
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            )
+          }
+
+          return linkContent
         })}
       </nav>
 
       {/* Settings at bottom */}
-      <div className="px-2 pb-4 border-t border-border pt-4">
-        <Tooltip>
-          <TooltipTrigger render={
+      <div className="p-2 border-t border-border">
+        {(() => {
+          const isActive = pathname === '/settings'
+          const settingsContent = (
             <Link
               href="/settings"
-              id="nav-settings"
               className={cn(
-                'flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors',
-                pathname === '/settings'
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                !isOpen && 'justify-center px-0'
               )}
             >
               <Settings className="h-4 w-4 flex-shrink-0" />
               {isOpen && <span className="truncate">Settings</span>}
             </Link>
-          } />
-          {!isOpen && (
-            <TooltipContent side="right">
-              <p>Settings</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
+          )
+
+          if (!isOpen) {
+            return (
+              <Tooltip>
+                <TooltipTrigger render={settingsContent} />
+                <TooltipContent side="right">Settings</TooltipContent>
+              </Tooltip>
+            )
+          }
+
+          return settingsContent
+        })()}
       </div>
     </aside>
   )
