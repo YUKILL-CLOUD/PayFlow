@@ -34,8 +34,14 @@ export interface PlannerAllocation {
   recurrenceType: string;
   dueDay: number | null;
   nextDue: string;         // ISO date of next due occurrence
-  paydaysRemaining: number;// count of paydays remaining before next due date
+  paydaysRemaining: number;// calendar paydays remaining before next due date
   sortOrder: number;
+  // Installment-specific metadata (undefined for non-installment)
+  billType?: string;            // 'recurring' | 'installment' | 'one_time'
+  installmentsTotal?: number;   // total number of installments
+  installmentsPaid?: number;    // installments already completed
+  cycleTarget?: number;         // the full obligation for this funding cycle
+  cycleAccumulated?: number;    // what has already been allocated in this cycle
 }
 
 export interface PlannerResult {

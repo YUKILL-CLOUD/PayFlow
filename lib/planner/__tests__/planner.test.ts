@@ -411,4 +411,55 @@ describe('Planner Engine Allocation Waterfalls', () => {
     assert.strictEqual(shopeeEvent.details.paydaysRemaining, 3)
     assert.strictEqual(shopeeEvent.details.estimatedPerPayday, 333.33)
   })
+
+  test('Installment Bills: participates in funding cycle calculation (cycle target = installment_amount)', () => {
+    const context: PlannerContext = {
+      // Planned date July 15 (next due is August 13 -> 2 paydays remaining: July 15 and July 30)
+      plannedPayday: '2026-07-15',
+      salary: 10000,
+      profile: mockProfile,
+      wallets: mockWallets,
+      bills: [
+        {
+          id: 'bill-motorcycle',
+          name: 'Motorcycle Loan',
+          bill_type: 'installment',
+          amount: 86400, // Total financed amount (ignored by engine in favor of installment_amount)
+          installment_amount: 3600, // Per-cycle target
+          total_installments: 24,
+          installments_paid: 5,
+          is_variable: false,
+          wallet_id: 'wallet-main',
+          priority: 'critical',
+          recurrence_type: 'monthly',
+          due_day: 13,
+          is_active: true,
+          sort_order: 1
+        }
+      ],
+      funds: [],
+      accumulatedAllocations: {
+        bills: {
+          'bill-motorcycle': 1000 // ₱1,000 already accumulated earlier in this cycle
+        }
+      }
+    }
+
+    const result = planPayday(context)
+    const motorAlloc = result.allocations.find(a => a.billId === 'bill-motorcycle')
+
+    assert.ok(motorAlloc)
+    // Cycle target = 3,600
+    // Remaining to save = 3,600 - 1,000 = 2,600
+    // Paydays remaining before Aug 13 = 2 (July 15 and July 30)
+    // Target amount for this payday = 2,600 / 2 = 1,300
+    assert.strictEqual(motorAlloc.targetAmount, 1300)
+    assert.strictEqual(motorAlloc.allocatedAmount, 1300)
+    assert.strictEqual(motorAlloc.billType, 'installment')
+    assert.strictEqual(motorAlloc.installmentsTotal, 24)
+    assert.strictEqual(motorAlloc.installmentsPaid, 5)
+    assert.strictEqual(motorAlloc.cycleTarget, 3600)
+    assert.strictEqual(motorAlloc.cycleAccumulated, 1000)
+  })
 })
+
