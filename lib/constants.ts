@@ -48,3 +48,35 @@ export const FUND_FREQUENCIES = [
   { id: 'yearly', label: 'Yearly' },
   { id: 'one_time', label: 'One-Time' },
 ] as const
+
+// Bill-specific frequencies — excludes one_time (handled by bill_type)
+export const BILL_FREQUENCIES = [
+  { id: 'every_payday', label: 'Every Payday' },
+  { id: 'weekly', label: 'Weekly' },
+  { id: 'bi_weekly', label: 'Bi-Weekly' },
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'quarterly', label: 'Quarterly' },
+  { id: 'yearly', label: 'Yearly' },
+] as const
+
+export const BILL_TYPES = [
+  {
+    id: 'recurring',
+    label: 'Recurring',
+    description: 'Repeats indefinitely until manually archived',
+    icon: 'RefreshCw',
+  },
+  {
+    id: 'installment',
+    label: 'Installment',
+    description: 'Fixed number of payments then auto-completes',
+    icon: 'CreditCard',
+  },
+  {
+    id: 'one_time',
+    label: 'One-Time',
+    description: 'Occurs once on a specific due date',
+    icon: 'CalendarCheck',
+  },
+] as const
+

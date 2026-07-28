@@ -28,6 +28,13 @@ export interface CalendarEvent {
     salary?: number
     allocatedAmount?: number
     surplus?: number
+    // Installment-specific
+    billType?: string
+    totalInstallments?: number
+    installmentsPaid?: number
+    installmentProgressPercent?: number
+    paymentsRemaining?: number
+    payeeName?: string
   }
 }
 
@@ -122,6 +129,13 @@ export function generateCalendarEvents(
   bills.forEach(bill => {
     if (!bill.is_active) return
 
+    // Skip completed installment bills
+    if (bill.bill_type === 'installment' &&
+        bill.total_installments &&
+        (bill.installments_paid ?? 0) >= bill.total_installments) {
+      return
+    }
+
     // Generate occurrences across the grid window
     let runnerDate = new Date(gridStart)
     while (runnerDate <= gridEnd) {
@@ -133,24 +147,50 @@ export function generateCalendarEvents(
         // Avoid duplicate additions for the same bill occurrence
         const exists = events.some(e => e.id === `bill-${bill.id}-${nextDueStr}`)
         if (!exists) {
-          // ALWAYS calculate paydaysRemaining from referenceDate (today/planned payday) to match Planner & Dashboard
-          const paydaysRemaining = calculatePaydaysRemaining(referenceDate, nextDue, profile)
-          const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
-          const estimatedPerPayday = Math.round((bill.amount / paydaysDiv) * 100) / 100
+          // Build installment-specific details
+          let detailsPayload: CalendarEvent['details'] = {
+            recurrenceType: bill.recurrence_type,
+            billType: bill.bill_type ?? 'recurring',
+            payeeName: bill.payee_name ?? undefined,
+          }
+
+          if (bill.bill_type === 'installment' && bill.total_installments) {
+            const installmentsPaid = bill.installments_paid ?? 0
+            const paymentsRemaining = Math.max(0, bill.total_installments - installmentsPaid)
+            const installmentProgressPercent = Math.min(
+              100,
+              Math.round((installmentsPaid / bill.total_installments) * 100)
+            )
+            detailsPayload = {
+              ...detailsPayload,
+              totalInstallments: bill.total_installments,
+              installmentsPaid,
+              installmentProgressPercent,
+              paymentsRemaining,
+              estimatedPerPayday: bill.installment_amount ?? bill.amount,
+              paydaysRemaining: paymentsRemaining,
+            }
+          } else {
+            // Recurring / one-time: calculate per-payday estimate
+            const paydaysRemaining = calculatePaydaysRemaining(referenceDate, nextDue, profile)
+            const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
+            const estimatedPerPayday = Math.round((bill.amount / paydaysDiv) * 100) / 100
+            detailsPayload = {
+              ...detailsPayload,
+              paydaysRemaining,
+              estimatedPerPayday,
+            }
+          }
 
           events.push({
             id: `bill-${bill.id}-${nextDueStr}`,
             date: nextDueStr,
             title: bill.name,
             type: 'bill',
-            amount: bill.amount,
+            amount: bill.bill_type === 'installment' ? (bill.installment_amount ?? bill.amount) : bill.amount,
             priority: bill.priority,
             walletId: bill.wallet_id,
-            details: {
-              paydaysRemaining,
-              estimatedPerPayday,
-              recurrenceType: bill.recurrence_type
-            },
+            details: detailsPayload,
             rawItem: bill
           })
         }

@@ -16,6 +16,8 @@ export type Json =
 export type FundType = 'recurring' | 'goal'
 export type PriorityLevel = 'critical' | 'high' | 'medium' | 'optional'
 export type BillRepeat = 'weekly' | 'bi_weekly' | 'monthly' | 'quarterly' | 'annually' | 'one_time'
+export type BillType = 'recurring' | 'installment' | 'one_time'
+export type BillStatus = 'active' | 'paused' | 'completed' | 'archived'
 export type PaydayStatus = 'draft' | 'planned' | 'active' | 'completed'
 export type PaydaySchedule = 'weekly' | 'bi_weekly' | 'semi_monthly' | 'monthly' | 'custom'
 export type WalletType = 'bank' | 'e_wallet' | 'cash' | 'other'
@@ -176,6 +178,14 @@ export interface Database {
           notes: string | null
           created_at: string
           updated_at: string
+          // v2 installment expansion
+          bill_type: BillType
+          total_installments: number | null
+          installments_paid: number
+          installment_amount: number | null
+          first_due_date: string | null
+          payee_name: string | null
+          status: BillStatus
         }
         Insert: {
           id?: string
@@ -193,6 +203,14 @@ export interface Database {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          // v2 installment expansion
+          bill_type?: BillType
+          total_installments?: number | null
+          installments_paid?: number
+          installment_amount?: number | null
+          first_due_date?: string | null
+          payee_name?: string | null
+          status?: BillStatus
         }
         Update: {
           wallet_id?: string
@@ -207,6 +225,14 @@ export interface Database {
           is_active?: boolean
           notes?: string | null
           updated_at?: string
+          // v2 installment expansion
+          bill_type?: BillType
+          total_installments?: number | null
+          installments_paid?: number
+          installment_amount?: number | null
+          first_due_date?: string | null
+          payee_name?: string | null
+          status?: BillStatus
         }
         Relationships: []
       }

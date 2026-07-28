@@ -31,11 +31,14 @@ interface BillsClientProps {
   profile: Profile
 }
 
-const TABS = [
+type ActiveTab = 'all' | 'recurring' | 'installment' | 'one_time'
+
+const TABS: { id: ActiveTab; label: string }[] = [
   { id: 'all', label: 'All' },
-  { id: 'fixed', label: 'Fixed' },
-  { id: 'variable', label: 'Variable' },
-] as const
+  { id: 'recurring', label: 'Recurring' },
+  { id: 'installment', label: 'Installment' },
+  { id: 'one_time', label: 'One-Time' },
+]
 
 import { useSearchParams } from 'next/navigation'
 
@@ -44,7 +47,7 @@ export function BillsClient({ initialBills, wallets, profile }: BillsClientProps
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingBill, setEditingBill] = React.useState<Bill | undefined>()
   const [billToArchive, setBillToArchive] = React.useState<string | null>(null)
-  const [activeTab, setActiveTab] = React.useState<'all' | 'fixed' | 'variable'>('all')
+  const [activeTab, setActiveTab] = React.useState<ActiveTab>('all')
 
   React.useEffect(() => {
     if (searchParams.get('action') === 'new') {
@@ -61,9 +64,13 @@ export function BillsClient({ initialBills, wallets, profile }: BillsClientProps
 
   const filteredBills = React.useMemo(() => {
     if (activeTab === 'all') return initialBills
-    if (activeTab === 'fixed') return initialBills.filter(b => !b.is_variable)
-    return initialBills.filter(b => b.is_variable)
+    return initialBills.filter(b => (b.bill_type ?? 'recurring') === activeTab)
   }, [initialBills, activeTab])
+
+  const getTabCount = (tabId: ActiveTab) => {
+    if (tabId === 'all') return initialBills.length
+    return initialBills.filter(b => (b.bill_type ?? 'recurring') === tabId).length
+  }
 
   const handleAdd = () => {
     setEditingBill(undefined)
@@ -96,6 +103,26 @@ export function BillsClient({ initialBills, wallets, profile }: BillsClientProps
     }
   }
 
+  // Build defaultValues for the form, including installments_paid for edit mode
+  // Convert null → undefined to satisfy BillFormDialog prop types
+  const editingBillFormValues = editingBill ? {
+    id: editingBill.id,
+    name: editingBill.name,
+    amount: editingBill.amount,
+    is_variable: editingBill.is_variable,
+    wallet_id: editingBill.wallet_id,
+    priority: editingBill.priority as BillInput['priority'],
+    recurrence_type: editingBill.recurrence_type as BillInput['recurrence_type'],
+    due_day: editingBill.due_day ?? undefined,
+    notes: editingBill.notes ?? undefined,
+    payee_name: editingBill.payee_name ?? undefined,
+    bill_type: (editingBill.bill_type ?? 'recurring') as BillInput['bill_type'],
+    total_installments: editingBill.total_installments ?? undefined,
+    installments_paid: editingBill.installments_paid ?? 0,
+    installment_amount: editingBill.installment_amount ?? undefined,
+    first_due_date: editingBill.first_due_date ?? undefined,
+  } : undefined
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -110,13 +137,9 @@ export function BillsClient({ initialBills, wallets, profile }: BillsClientProps
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
+      <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit flex-wrap">
         {TABS.map((tab) => {
-          const count = tab.id === 'all'
-            ? initialBills.length
-            : tab.id === 'fixed'
-              ? initialBills.filter(b => !b.is_variable).length
-              : initialBills.filter(b => b.is_variable).length
+          const count = getTabCount(tab.id)
           return (
             <button
               key={tab.id}
@@ -151,7 +174,7 @@ export function BillsClient({ initialBills, wallets, profile }: BillsClientProps
             <Plus className="h-10 w-10" />
           </div>
           <h3 className="text-lg font-semibold">
-            {activeTab === 'all' ? 'No bills found' : `No ${activeTab} bills`}
+            {activeTab === 'all' ? 'No bills found' : `No ${activeTab.replace('_', '-')} bills`}
           </h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-sm">
             Create your first bill to start tracking your regular expenses and variable payments.
@@ -177,17 +200,7 @@ export function BillsClient({ initialBills, wallets, profile }: BillsClientProps
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         wallets={wallets}
-        bill={editingBill ? {
-          id: editingBill.id,
-          name: editingBill.name,
-          amount: editingBill.amount,
-          is_variable: editingBill.is_variable,
-          wallet_id: editingBill.wallet_id,
-          priority: editingBill.priority,
-          recurrence_type: editingBill.recurrence_type as any,
-          due_day: editingBill.due_day,
-          notes: editingBill.notes,
-        } : undefined}
+        bill={editingBillFormValues}
         onSubmit={handleSubmit}
       />
 

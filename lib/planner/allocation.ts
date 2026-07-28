@@ -15,6 +15,13 @@ export function calculateTargets(context: PlannerContext): PlannerAllocation[] {
 
   // 1. Process Bills
   bills.forEach((bill) => {
+    // Skip completed installment bills (already fully paid)
+    if (bill.bill_type === 'installment' &&
+        bill.total_installments &&
+        (bill.installments_paid ?? 0) >= bill.total_installments) {
+      return
+    }
+
     const isOverride = overrides?.bills && overrides.bills[bill.id] !== undefined
     const overrideAmount = isOverride ? overrides.bills![bill.id] : null
 
@@ -22,21 +29,52 @@ export function calculateTargets(context: PlannerContext): PlannerAllocation[] {
     let paydaysRemaining = 1
     let nextDueStr = plannedPayday
 
-    if (bill.recurrence_type !== 'every_payday') {
-      const nextDue = calculateNextDue(plannedDate, bill.recurrence_type, bill.due_day, bill.recurrence_rule)
-      nextDueStr = nextDue.toISOString().split('T')[0]
-      paydaysRemaining = calculatePaydaysRemaining(plannedDate, nextDue, profile)
+    if (bill.bill_type === 'installment') {
+      // Installment bills: use installment_amount directly — no payday splitting
+      const installmentAmt = bill.installment_amount ?? bill.amount
+      targetAmount = isOverride ? overrideAmount! : installmentAmt
+      paydaysRemaining = bill.total_installments
+        ? Math.max(1, bill.total_installments - (bill.installments_paid ?? 0))
+        : 1
 
-      if (!isOverride) {
-        const accumulated = accumulatedAllocations?.bills?.[bill.id] ?? 0
-        const remainingToSave = Math.max(0, bill.amount - accumulated)
-        const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
-        targetAmount = remainingToSave / paydaysDiv
+      // Calculate next due date based on recurrence pattern
+      if (bill.recurrence_type !== 'every_payday') {
+        const nextDue = calculateNextDue(plannedDate, bill.recurrence_type, bill.due_day, bill.recurrence_rule)
+        nextDueStr = nextDue.toISOString().split('T')[0]
       }
-    }
+    } else if (bill.bill_type === 'one_time') {
+      // One-time bills: target_date from recurrence_rule or first_due_date
+      const targetDateStr = (bill.recurrence_rule as any)?.target_date || bill.first_due_date
+      if (targetDateStr) {
+        const nextDue = new Date(targetDateStr)
+        nextDueStr = nextDue.toISOString().split('T')[0]
+        paydaysRemaining = calculatePaydaysRemaining(plannedDate, nextDue, profile)
+        if (!isOverride) {
+          const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
+          targetAmount = bill.amount / paydaysDiv
+        }
+      } else {
+        targetAmount = bill.amount
+      }
+      if (isOverride) targetAmount = overrideAmount!
+    } else {
+      // Recurring bills: existing split-by-paydays logic
+      if (bill.recurrence_type !== 'every_payday') {
+        const nextDue = calculateNextDue(plannedDate, bill.recurrence_type, bill.due_day, bill.recurrence_rule)
+        nextDueStr = nextDue.toISOString().split('T')[0]
+        paydaysRemaining = calculatePaydaysRemaining(plannedDate, nextDue, profile)
 
-    if (isOverride) {
-      targetAmount = overrideAmount!
+        if (!isOverride) {
+          const accumulated = accumulatedAllocations?.bills?.[bill.id] ?? 0
+          const remainingToSave = Math.max(0, bill.amount - accumulated)
+          const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
+          targetAmount = remainingToSave / paydaysDiv
+        }
+      }
+
+      if (isOverride) {
+        targetAmount = overrideAmount!
+      }
     }
 
     allocations.push({
@@ -56,6 +94,7 @@ export function calculateTargets(context: PlannerContext): PlannerAllocation[] {
       sortOrder: bill.sort_order || 0,
     })
   })
+
 
   // 2. Process Funds
   funds.forEach((fund) => {

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { planPayday, type PlannerContext, type PlannerResult } from '@/lib/planner/engine'
 import { calculatePreviousDue } from '@/lib/planner/dates'
+import { progressBillsOnPaydayLock } from '@/actions/bills'
 
 // Helper to fetch active context components and calculate accumulated allocations
 async function fetchPlannerContextData(userId: string, plannedPayday: string, overrides?: any) {
@@ -279,7 +280,11 @@ export async function lockPaydayAction(paydayId: string) {
       return { success: false, message: 'Failed to finalize payday plan' }
     }
 
+    // Auto-progress installment & one-time bills based on completed allocations
+    await progressBillsOnPaydayLock(paydayId, user.id)
+
     revalidatePath('/planner')
+    revalidatePath('/bills')
     return { success: true, message: 'Payday locked and completed successfully' }
   } catch (error) {
     console.error('lockPaydayAction error:', error)

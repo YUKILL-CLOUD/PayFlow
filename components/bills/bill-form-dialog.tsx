@@ -12,14 +12,14 @@ interface BillFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   wallets: Wallet[]
-  bill?: Partial<BillInput> & { id?: string }
+  bill?: Partial<BillInput> & { id?: string; installments_paid?: number; total_installments?: number }
   onSubmit: (data: BillInput) => Promise<{ success: boolean; message?: string }>
 }
 
 export function BillFormDialog({ open, onOpenChange, wallets, bill, onSubmit }: BillFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{bill?.id ? 'Edit Bill' : 'Add Bill'}</DialogTitle>
           <DialogDescription>
