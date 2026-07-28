@@ -9,9 +9,10 @@ export interface PlannerContext {
     bills?: Record<string, number>; // billId -> custom amount
     funds?: Record<string, number>; // fundId -> custom amount
   };
-  accumulatedAllocations?: {
-    bills?: Record<string, number>; // billId -> sum of past allocations in current cycle
-    funds?: Record<string, number>; // fundId -> sum of past allocations in current cycle
+  reservedAmounts?: {
+    bills?: Record<string, number>; // billId -> current reserved amount in wallet
+    goals?: Record<string, number>; // goalId / fundId -> current reserved amount in wallet
+    funds?: Record<string, number>; // fallback for backwards compatibility
   };
 }
 

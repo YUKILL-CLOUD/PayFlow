@@ -311,9 +311,9 @@ describe('Planner Engine Allocation Waterfalls', () => {
         }
       ],
       funds: [],
-      accumulatedAllocations: {
+      reservedAmounts: {
         bills: {
-          'bill-shopee': 333.33 // Already planned/allocated on previous payday (July 21)
+          'bill-shopee': 333.33 // Already reserved in wallet envelope
         }
       }
     }
@@ -438,9 +438,9 @@ describe('Planner Engine Allocation Waterfalls', () => {
         }
       ],
       funds: [],
-      accumulatedAllocations: {
+      reservedAmounts: {
         bills: {
-          'bill-motorcycle': 1000 // ₱1,000 already accumulated earlier in this cycle
+          'bill-motorcycle': 1000 // ₱1,000 already reserved in wallet envelope
         }
       }
     }

@@ -21,6 +21,7 @@ export type BillStatus = 'active' | 'paused' | 'completed' | 'archived'
 export type PaydayStatus = 'draft' | 'planned' | 'active' | 'completed'
 export type PaydaySchedule = 'weekly' | 'bi_weekly' | 'semi_monthly' | 'monthly' | 'custom'
 export type WalletType = 'bank' | 'e_wallet' | 'cash' | 'other'
+export type ReservationEntryType = 'payday_allocation' | 'manual_adjustment' | 'disbursement' | 'reversal'
 
 export interface Database {
   public: {
@@ -67,6 +68,7 @@ export interface Database {
           icon: string | null
           sort_order: number
           is_active: boolean
+          current_balance: number
           created_at: string
           updated_at: string
         }
@@ -80,6 +82,7 @@ export interface Database {
           icon?: string | null
           sort_order?: number
           is_active?: boolean
+          current_balance?: number
           created_at?: string
           updated_at?: string
         }
@@ -91,6 +94,7 @@ export interface Database {
           icon?: string | null
           sort_order?: number
           is_active?: boolean
+          current_balance?: number
           updated_at?: string
         }
         Relationships: []
@@ -321,6 +325,48 @@ export interface Database {
         }
         Relationships: []
       }
+      wallet_reservation_entries: {
+        Row: {
+          id: string
+          user_id: string
+          wallet_id: string
+          source_type: 'bill' | 'goal'
+          source_id: string
+          cycle_start: string
+          cycle_end: string
+          amount: number
+          entry_type: ReservationEntryType
+          reason: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          wallet_id: string
+          source_type: 'bill' | 'goal'
+          source_id: string
+          cycle_start: string
+          cycle_end: string
+          amount: number
+          entry_type?: ReservationEntryType
+          reason?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          wallet_id?: string
+          source_type?: 'bill' | 'goal'
+          source_id?: string
+          cycle_start?: string
+          cycle_end?: string
+          amount?: number
+          entry_type?: ReservationEntryType
+          reason?: string | null
+          notes?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -331,6 +377,8 @@ export interface Database {
       payday_status: PaydayStatus
       payday_schedule: PaydaySchedule
       wallet_type: WalletType
+      reservation_entry_type: ReservationEntryType
     }
   }
 }
+

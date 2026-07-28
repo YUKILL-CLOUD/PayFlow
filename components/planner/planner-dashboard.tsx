@@ -2,12 +2,11 @@
 
 import * as React from 'react'
 import { toggleAllocationCompleteAction, lockPaydayAction, discardPaydayAction } from '@/actions/paydays'
-import { WALLET_COLORS, PRIORITY_LEVELS, WALLET_ICONS } from '@/lib/constants'
+import { WALLET_COLORS, PRIORITY_LEVELS } from '@/lib/constants'
 import { DynamicIcon } from '@/components/ui/dynamic-icon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import {
   AlertDialog,
@@ -21,15 +20,15 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { 
-  Loader2, 
-  CheckCircle, 
-  Trash2, 
-  Wallet, 
-  ArrowRightLeft, 
-  CheckSquare, 
+import {
+  Loader2,
+  Trash2,
   AlertTriangle,
-  Lock
+  Lock,
+  ArrowRightLeft,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Database } from '@/types/database'
@@ -45,7 +44,6 @@ interface PlannerDashboardProps {
 }
 
 export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashboardProps) {
-  const [isUpdating, setIsUpdating] = React.useState<string | null>(null)
   const [isFinishing, setIsFinishing] = React.useState(false)
   const [isDiscarding, setIsDiscarding] = React.useState(false)
   const [isLockDialogOpen, setIsLockDialogOpen] = React.useState(false)
@@ -104,10 +102,7 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
       toggleOptimistic({ id: allocId, is_completed: isChecked })
     })
 
-    setIsUpdating(allocId)
     const result = await toggleAllocationCompleteAction(allocId, isChecked)
-    setIsUpdating(null)
-
     if (!result.success) {
       toast.error(result.message || 'Failed to update allocation state.')
     }
@@ -152,13 +147,12 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
       <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-xl font-bold tracking-tight">Active Plan Execution</h2>
+            <h2 className="text-xl font-bold tracking-tight">Active Payday Execution</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Salary: <span className="font-semibold text-foreground">{formatCurrency(payday.salary)}</span> | Planned: <span className="font-semibold text-foreground">{formatDate(payday.payday_date)}</span>
             </p>
           </div>
           <div className="flex gap-2">
-            
             {/* Discard Dialog */}
             <AlertDialog open={isDiscardDialogOpen} onOpenChange={setIsDiscardDialogOpen}>
               <AlertDialogTrigger render={
@@ -206,7 +200,6 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-
           </div>
         </div>
 
@@ -235,69 +228,112 @@ export function PlannerDashboard({ payday, allocations, wallets }: PlannerDashbo
         </div>
       )}
 
-      {/* Group checklist details */}
-      <div className="space-y-6">
+      {/* Wallet Transfer Cards Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold tracking-tight">Wallet Transfer Recommendations</h3>
+          <span className="text-xs text-muted-foreground">{Object.keys(groupedAllocations).length} destination wallets</span>
+        </div>
+
         {Object.entries(groupedAllocations).map(([walletId, items]) => {
           const wObj = walletsMap.get(walletId)
           const wColor = WALLET_COLORS.find(c => c.id === wObj?.color) || WALLET_COLORS[0]
-          
+          const currentBal = wObj?.current_balance || 0
+
+          const walletTransferTotal = items.reduce((s, i) => s + i.amount, 0)
+          const walletCompletedTotal = items.filter(i => i.is_completed).reduce((s, i) => s + i.amount, 0)
+          const isWalletComplete = walletCompletedTotal >= walletTransferTotal && walletTransferTotal > 0
+
+          // Health indicator
+          let health: { label: string; bg: string; text: string; Icon: any }
+          if (currentBal >= walletTransferTotal) {
+            health = { label: 'Fully Funded', bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', Icon: CheckCircle2 }
+          } else if (currentBal > 0) {
+            health = { label: 'Needs Attention', bg: 'bg-amber-500/10', text: 'text-amber-700 dark:text-amber-400', Icon: AlertTriangle }
+          } else {
+            health = { label: 'Underfunded', bg: 'bg-red-500/10', text: 'text-red-700 dark:text-red-400', Icon: AlertCircle }
+          }
+
           return (
             <div key={walletId} className="rounded-xl border bg-card overflow-hidden shadow-sm">
-              <div className="bg-muted/40 p-4 border-b flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`h-3 w-3 rounded-full ${wColor.class}`} />
-                  <DynamicIcon name={wObj?.icon || 'wallet'} className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-bold text-sm">{wObj?.name || 'Unknown Wallet'}</h3>
+              {/* Wallet Card Header */}
+              <div className="bg-muted/40 p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 shrink-0 rounded-lg ${wColor.class} text-white flex items-center justify-center shadow-sm`}>
+                    <DynamicIcon name={wObj?.icon || 'wallet'} className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-base">{wObj?.name || 'Unknown Wallet'}</h4>
+                      <Badge variant="outline" className={`${health.bg} ${health.text} border-0 text-[10px] font-medium`}>
+                        <health.Icon className="mr-1 h-3 w-3" />
+                        {health.label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Current balance: <span className="font-medium text-foreground">{formatCurrency(currentBal)}</span>
+                    </p>
+                  </div>
                 </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {items.filter(i => i.is_completed).length} / {items.length} Transfers
-                </Badge>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40">
+                  <div className="text-right">
+                    <span className="text-[10px] text-muted-foreground block uppercase font-medium">Transfer Today</span>
+                    <span className="text-lg font-bold text-primary">{formatCurrency(walletTransferTotal)}</span>
+                  </div>
+                  <div className="h-8 w-px bg-border hidden sm:block" />
+                  {isWalletComplete && (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-0 text-xs py-1">
+                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Done
+                    </Badge>
+                  )}
+                </div>
               </div>
 
-              <div className="divide-y bg-background">
-                {items.sort((a, b) => a.execution_order - b.execution_order).map((item) => {
+              {/* Obligation Breakdown items inside wallet */}
+              <div className="divide-y">
+                {items.map((item) => {
+                  const priorityObj = PRIORITY_LEVELS.find(p => p.id === (item as any).priority) || PRIORITY_LEVELS[2]
                   return (
-                    <div 
-                      key={item.id} 
-                      className={`flex items-center justify-between p-4 transition-colors ${item.is_completed ? 'bg-secondary/10' : ''}`}
+                    <div
+                      key={item.id}
+                      className={`p-4 flex items-center justify-between gap-4 transition-colors ${
+                        item.is_completed ? 'bg-muted/20' : 'hover:bg-accent/50'
+                      }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0 pr-4">
+                      <div className="flex items-center gap-3 min-w-0">
                         <Checkbox
                           id={`alloc-${item.id}`}
                           checked={item.is_completed}
                           onCheckedChange={(checked) => handleToggle(item.id, !!checked)}
-                          disabled={isFinishing || isDiscarding}
-                          className="h-5 w-5 rounded border-muted-foreground/40 data-[state=checked]:bg-primary"
                         />
                         <div className="min-w-0">
-                          <Label 
-                            htmlFor={`alloc-${item.id}`} 
-                            className={`font-semibold text-sm cursor-pointer select-none line-clamp-1 ${item.is_completed ? 'line-through text-muted-foreground' : ''}`}
+                          <label
+                            htmlFor={`alloc-${item.id}`}
+                            className={`font-medium text-sm block cursor-pointer truncate ${
+                              item.is_completed ? 'line-through text-muted-foreground' : ''
+                            }`}
                           >
                             {item.snapshot_label}
-                          </Label>
-                          {item.bill_id && (
-                            <Badge variant="outline" className="text-[9px] uppercase font-bold border-0 bg-secondary/80 text-secondary-foreground shrink-0 mt-1 py-0 px-1 w-fit">
-                              Bill
+                          </label>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="outline" className={`${priorityObj.bgLight} ${priorityObj.textColor} border-0 text-[9px] font-medium`}>
+                              {priorityObj.label}
                             </Badge>
-                          )}
-                          {item.fund_id && (
-                            <Badge variant="outline" className="text-[9px] uppercase font-bold border-0 bg-secondary/80 text-secondary-foreground shrink-0 mt-1 py-0 px-1 w-fit">
-                              Fund
-                            </Badge>
-                          )}
+                            {item.bill_id ? (
+                              <span className="text-[10px] text-muted-foreground">Bill</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Savings Goal</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
                       <div className="text-right shrink-0">
-                        <p className={`font-bold ${item.is_completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                        <span className={`font-bold text-sm block ${item.is_completed ? 'text-muted-foreground' : ''}`}>
                           {formatCurrency(item.amount)}
-                        </p>
-                        {item.snapshot_amount !== item.amount && (
-                          <p className="text-[10px] text-destructive font-medium line-through mt-0.5">
-                            Target: {formatCurrency(item.snapshot_amount)}
-                          </p>
-                        )}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">Today's allocation</span>
                       </div>
                     </div>
                   )

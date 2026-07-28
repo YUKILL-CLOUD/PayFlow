@@ -2,9 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { Database } from '@/types/database'
+import type { Database, PaydaySchedule } from '@/types/database'
 
-type PaydaySchedule = Database['public']['Enums']['payday_schedule']
 
 interface UpdateProfileInput {
   display_name?: string | null

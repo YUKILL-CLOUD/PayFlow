@@ -22,7 +22,7 @@ export async function createWallet(data: WalletInput) {
       return { success: false, message: parsed.error.issues[0].message }
     }
 
-    const { name, type, description, color, icon } = parsed.data
+    const { name, type, description, color, icon, current_balance } = parsed.data
 
     // Check for duplicate active wallet name
     const { data: existingWallet } = await supabase
@@ -58,6 +58,7 @@ export async function createWallet(data: WalletInput) {
         color,
         icon,
         sort_order: nextSortOrder,
+        current_balance: current_balance || 0,
       })
 
     if (insertError) {
@@ -72,6 +73,118 @@ export async function createWallet(data: WalletInput) {
     return { success: false, message: 'An unexpected error occurred' }
   }
 }
+
+export async function updateWalletBalance(walletId: string, balance: number) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, message: 'Unauthorized' }
+    }
+
+    if (balance < 0) {
+      return { success: false, message: 'Balance cannot be negative' }
+    }
+
+    const { error } = await (supabase as any)
+      .from('wallets')
+      .update({ current_balance: balance, updated_at: new Date().toISOString() })
+      .eq('id', walletId)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('updateWalletBalance error:', error)
+      return { success: false, message: 'Failed to update balance' }
+    }
+
+    revalidatePath('/wallets')
+    revalidatePath('/planner')
+    return { success: true, message: 'Wallet balance updated' }
+  } catch (error) {
+    console.error('updateWalletBalance error:', error)
+    return { success: false, message: 'An unexpected error occurred' }
+  }
+}
+
+export async function depositToWallet(walletId: string, amount: number) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, message: 'Unauthorized' }
+    }
+
+    if (amount <= 0) {
+      return { success: false, message: 'Amount must be positive' }
+    }
+
+    const { data: wallet } = await (supabase as any)
+      .from('wallets')
+      .select('current_balance')
+      .eq('id', walletId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!wallet) return { success: false, message: 'Wallet not found' }
+
+    const newBalance = (wallet.current_balance || 0) + amount
+
+    await (supabase as any)
+      .from('wallets')
+      .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
+      .eq('id', walletId)
+      .eq('user_id', user.id)
+
+    revalidatePath('/wallets')
+    revalidatePath('/planner')
+    return { success: true, message: `Deposited ₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` }
+  } catch (error) {
+    console.error('depositToWallet error:', error)
+    return { success: false, message: 'An unexpected error occurred' }
+  }
+}
+
+export async function withdrawFromWallet(walletId: string, amount: number) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, message: 'Unauthorized' }
+    }
+
+    if (amount <= 0) {
+      return { success: false, message: 'Amount must be positive' }
+    }
+
+    const { data: wallet } = await (supabase as any)
+      .from('wallets')
+      .select('current_balance')
+      .eq('id', walletId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!wallet) return { success: false, message: 'Wallet not found' }
+
+    const newBalance = Math.max(0, (wallet.current_balance || 0) - amount)
+
+    await (supabase as any)
+      .from('wallets')
+      .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
+      .eq('id', walletId)
+      .eq('user_id', user.id)
+
+    revalidatePath('/wallets')
+    revalidatePath('/planner')
+    return { success: true, message: `Withdrew ₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` }
+  } catch (error) {
+    console.error('withdrawFromWallet error:', error)
+    return { success: false, message: 'An unexpected error occurred' }
+  }
+}
+
 
 export async function updateWallet(id: string, data: WalletInput) {
   try {

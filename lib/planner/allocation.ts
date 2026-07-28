@@ -6,9 +6,13 @@ import { calculateNextDue, calculatePaydaysRemaining } from './dates'
  * Computes target amounts for each bill and fund relative to the planned payday.
  */
 export function calculateTargets(context: PlannerContext): PlannerAllocation[] {
-  const { plannedPayday, profile, funds, bills, overrides, accumulatedAllocations } = context
+  const { plannedPayday, profile, funds, bills, overrides, reservedAmounts } = context
   const plannedDate = new Date(plannedPayday)
   const allocations: PlannerAllocation[] = []
+
+  // Read reserved amounts from context
+  const billReservations = reservedAmounts?.bills || {}
+  const goalReservations = reservedAmounts?.goals || reservedAmounts?.funds || {}
 
   // Helper to round to 2 decimals
   const round2 = (num: number) => Math.round(num * 100) / 100
@@ -89,8 +93,8 @@ export function calculateTargets(context: PlannerContext): PlannerAllocation[] {
       paydaysRemaining = calculatePaydaysRemaining(plannedDate, nextDue, profile)
 
       if (!isOverride) {
-        const accumulated = accumulatedAllocations?.bills?.[bill.id] ?? 0
-        const remainingToSave = Math.max(0, cycleTarget - accumulated)
+        const reserved = billReservations[bill.id] ?? 0
+        const remainingToSave = Math.max(0, cycleTarget - reserved)
         const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
         targetAmount = remainingToSave / paydaysDiv
       }
@@ -121,11 +125,11 @@ export function calculateTargets(context: PlannerContext): PlannerAllocation[] {
 
     // Attach installment metadata for planner dashboard display
     if (bill.bill_type === 'installment') {
-      const accumulated = accumulatedAllocations?.bills?.[bill.id] ?? 0
+      const reserved = billReservations[bill.id] ?? 0
       allocationEntry.installmentsTotal = bill.total_installments ?? undefined
       allocationEntry.installmentsPaid = bill.installments_paid ?? 0
       allocationEntry.cycleTarget = cycleTarget
-      allocationEntry.cycleAccumulated = accumulated
+      allocationEntry.cycleAccumulated = reserved
     }
 
     allocations.push(allocationEntry)
@@ -170,8 +174,8 @@ export function calculateTargets(context: PlannerContext): PlannerAllocation[] {
         paydaysRemaining = calculatePaydaysRemaining(plannedDate, nextDue, profile)
 
         if (!isOverride) {
-          const accumulated = accumulatedAllocations?.funds?.[fund.id] ?? 0
-          const remainingToSave = Math.max(0, fund.recurring_amount - accumulated)
+          const reserved = goalReservations[fund.id] ?? 0
+          const remainingToSave = Math.max(0, fund.recurring_amount - reserved)
           const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
           targetAmount = remainingToSave / paydaysDiv
         }

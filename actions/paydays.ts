@@ -6,12 +6,12 @@ import { planPayday, type PlannerContext, type PlannerResult } from '@/lib/plann
 import { calculatePreviousDue } from '@/lib/planner/dates'
 import { progressBillsOnPaydayLock } from '@/actions/bills'
 
-// Helper to fetch active context components and calculate accumulated allocations
+// Helper to fetch active context components and calculate reserved amounts from ledger
 async function fetchPlannerContextData(userId: string, plannedPayday: string, overrides?: any) {
   const supabase = await createClient()
 
   // Fetch parallel lists
-  const [walletsResult, billsResult, fundsResult, profileResult, pastAllocationsResult] = await Promise.all([
+  const [walletsResult, billsResult, fundsResult, profileResult, reservationEntriesResult, pastAllocationsResult] = await Promise.all([
     (supabase as any)
       .from('wallets')
       .select('*')
@@ -36,6 +36,12 @@ async function fetchPlannerContextData(userId: string, plannedPayday: string, ov
       .eq('id', userId)
       .single(),
     (supabase as any)
+      .from('wallet_reservation_entries')
+      .select('source_type, source_id, amount, cycle_start, cycle_end')
+      .eq('user_id', userId)
+      .lte('cycle_start', plannedPayday)
+      .gte('cycle_end', plannedPayday),
+    (supabase as any)
       .from('allocations')
       .select('bill_id, fund_id, amount, paydays!inner(payday_date, status)')
       .eq('user_id', userId)
@@ -44,64 +50,85 @@ async function fetchPlannerContextData(userId: string, plannedPayday: string, ov
 
   const bills = billsResult.data || []
   const funds = fundsResult.data || []
+  const reservationEntries = reservationEntriesResult.data || []
   const pastAllocations = pastAllocationsResult.data || []
   const plannedDate = new Date(plannedPayday)
 
-  const accumulatedBills: Record<string, number> = {}
-  const accumulatedFunds: Record<string, number> = {}
+  const reservedBills: Record<string, number> = {}
+  const reservedGoals: Record<string, number> = {}
 
-  // 1. Calculate accumulated amounts for Bills
+  // 1. Calculate reserved amounts for Bills from ledger
   bills.forEach((bill: any) => {
     if (bill.recurrence_type === 'every_payday') {
-      accumulatedBills[bill.id] = 0
+      reservedBills[bill.id] = 0
       return
     }
 
     const prevDue = calculatePreviousDue(plannedDate, bill.recurrence_type, bill.due_day, bill.recurrence_rule)
     
-    // Filter past allocations in current cycle
-    const sum = pastAllocations
-      .filter((alloc: any) => {
-        if (alloc.bill_id !== bill.id) return false
-        const allocDate = new Date(alloc.paydays.payday_date)
-        return allocDate > prevDue && allocDate < plannedDate
-      })
-      .reduce((s: number, alloc: any) => s + alloc.amount, 0)
+    // Check if reservation entries exist in ledger for this bill
+    const ledgerSum = reservationEntries
+      .filter((e: any) => e.source_type === 'bill' && e.source_id === bill.id)
+      .reduce((sum: number, e: any) => sum + Number(e.amount), 0)
 
-    accumulatedBills[bill.id] = sum
+    const hasLedger = reservationEntries.some((e: any) => e.source_type === 'bill' && e.source_id === bill.id)
+
+    if (hasLedger) {
+      reservedBills[bill.id] = Math.max(0, ledgerSum)
+    } else {
+      // Fallback to past allocations table if no reservation entries exist yet
+      const sum = pastAllocations
+        .filter((alloc: any) => {
+          if (alloc.bill_id !== bill.id) return false
+          const allocDate = new Date(alloc.paydays.payday_date)
+          return allocDate > prevDue && allocDate < plannedDate
+        })
+        .reduce((s: number, alloc: any) => s + alloc.amount, 0)
+      reservedBills[bill.id] = sum
+    }
   })
 
-  // 2. Calculate accumulated amounts for Funds (only recurring type needs it, goal tracks current_amount)
+  // 2. Calculate reserved amounts for Funds/Goals from ledger
   funds.forEach((fund: any) => {
     if (fund.type === 'goal' || fund.recurrence_type === 'every_payday') {
-      accumulatedFunds[fund.id] = 0
+      reservedGoals[fund.id] = 0
       return
     }
 
     const prevDue = calculatePreviousDue(plannedDate, fund.recurrence_type, fund.due_day, fund.recurrence_rule)
     
-    const sum = pastAllocations
-      .filter((alloc: any) => {
-        if (alloc.fund_id !== fund.id) return false
-        const allocDate = new Date(alloc.paydays.payday_date)
-        return allocDate > prevDue && allocDate < plannedDate
-      })
-      .reduce((s: number, alloc: any) => s + alloc.amount, 0)
+    const ledgerSum = reservationEntries
+      .filter((e: any) => e.source_type === 'goal' && e.source_id === fund.id)
+      .reduce((sum: number, e: any) => sum + Number(e.amount), 0)
 
-    accumulatedFunds[fund.id] = sum
+    const hasLedger = reservationEntries.some((e: any) => e.source_type === 'goal' && e.source_id === fund.id)
+
+    if (hasLedger) {
+      reservedGoals[fund.id] = Math.max(0, ledgerSum)
+    } else {
+      const sum = pastAllocations
+        .filter((alloc: any) => {
+          if (alloc.fund_id !== fund.id) return false
+          const allocDate = new Date(alloc.paydays.payday_date)
+          return allocDate > prevDue && allocDate < plannedDate
+        })
+        .reduce((s: number, alloc: any) => s + alloc.amount, 0)
+      reservedGoals[fund.id] = sum
+    }
   })
 
   const context: PlannerContext = {
     plannedPayday,
-    salary: 0, // Set by caller
+    salary: 0,
     profile: profileResult.data,
     wallets: walletsResult.data || [],
     funds,
     bills,
     overrides,
-    accumulatedAllocations: {
-      bills: accumulatedBills,
-      funds: accumulatedFunds
+    reservedAmounts: {
+      bills: reservedBills,
+      goals: reservedGoals,
+      funds: reservedGoals,
     }
   }
 
@@ -280,11 +307,53 @@ export async function lockPaydayAction(paydayId: string) {
       return { success: false, message: 'Failed to finalize payday plan' }
     }
 
+    // Record reservation ledger entries for completed allocations
+    const { data: paydayRow } = await (supabase as any)
+      .from('paydays')
+      .select('payday_date')
+      .eq('id', paydayId)
+      .single()
+
+    if (paydayRow) {
+      const paydayDate = paydayRow.payday_date
+      const { data: completedAllocs } = await (supabase as any)
+        .from('allocations')
+        .select('*')
+        .eq('payday_id', paydayId)
+        .eq('user_id', user.id)
+        .eq('is_completed', true)
+
+      if (completedAllocs && completedAllocs.length > 0) {
+        const cycleStart = paydayDate
+        // Calculate cycle end date (30 days out as default cycle window end for reservation matching)
+        const d = new Date(paydayDate)
+        d.setMonth(d.getMonth() + 1)
+        const cycleEnd = d.toISOString().split('T')[0]
+
+        const ledgerEntries = completedAllocs.map((alloc: any) => ({
+          user_id: user.id,
+          wallet_id: alloc.wallet_id,
+          source_type: alloc.bill_id ? 'bill' : 'goal',
+          source_id: alloc.bill_id || alloc.fund_id,
+          cycle_start: cycleStart,
+          cycle_end: cycleEnd,
+          amount: alloc.amount,
+          entry_type: 'payday_allocation',
+          notes: `Payday lock allocation: ${alloc.snapshot_label}`,
+        }))
+
+        await (supabase as any)
+          .from('wallet_reservation_entries')
+          .insert(ledgerEntries)
+      }
+    }
+
     // Auto-progress installment & one-time bills based on completed allocations
     await progressBillsOnPaydayLock(paydayId, user.id)
 
     revalidatePath('/planner')
     revalidatePath('/bills')
+    revalidatePath('/wallets')
     return { success: true, message: 'Payday locked and completed successfully' }
   } catch (error) {
     console.error('lockPaydayAction error:', error)

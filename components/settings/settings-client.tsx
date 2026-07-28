@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Save, Settings2, CalendarDays } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Database } from '@/types/database'
+import type { Database, PaydaySchedule } from '@/types/database'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
-type PaydaySchedule = Database['public']['Enums']['payday_schedule']
 
 const SCHEDULE_OPTIONS: { value: PaydaySchedule; label: string; description: string }[] = [
   { value: 'weekly', label: 'Weekly', description: 'Every 7 days from your anchor date' },
