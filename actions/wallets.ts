@@ -74,60 +74,109 @@ export async function createWallet(data: WalletInput) {
   }
 }
 
-// Helper: Auto-sync envelope reservation for single-obligation wallets
-async function autoSyncSingleObligationReservation(supabase: any, userId: string, walletId: string, targetReservedAmount: number) {
+// Helper: Priority-based auto-distribution of wallet balance to envelopes
+async function autoDistributeWalletBalanceToEnvelopes(supabase: any, userId: string, walletId: string, walletBalance: number) {
   try {
     const [billsRes, fundsRes] = await Promise.all([
-      supabase.from('bills').select('id, name').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
-      supabase.from('funds').select('id, name').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
+      supabase.from('bills').select('id, name, amount, installment_amount, bill_type, priority, sort_order').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
+      supabase.from('funds').select('id, name, type, recurring_amount, target_amount, priority, sort_order').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
     ])
 
     const bills = billsRes.data || []
     const funds = fundsRes.data || []
     const totalObligations = bills.length + funds.length
 
-    // Only auto-sync if there is EXACTLY 1 obligation in this wallet
-    if (totalObligations === 1) {
-      const singleItem = bills.length === 1
-        ? { sourceType: 'bill' as const, sourceId: bills[0].id }
-        : { sourceType: 'goal' as const, sourceId: funds[0].id }
+    if (totalObligations === 0) return
 
-      const now = new Date()
-      const cycleStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().split('T')[0]
-      const cycleEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0)).toISOString().split('T')[0]
+    const priorityRankMap: Record<string, number> = { critical: 1, high: 2, medium: 3, optional: 4 }
 
-      // Fetch current sum in active cycle
-      const { data: existingEntries } = await supabase
-        .from('wallet_reservation_entries')
-        .select('amount')
-        .eq('user_id', userId)
-        .eq('source_type', singleItem.sourceType)
-        .eq('source_id', singleItem.sourceId)
-        .gte('cycle_start', cycleStart)
-        .lte('cycle_end', cycleEnd)
+    // Unified list of obligations
+    const items: Array<{
+      id: string
+      name: string
+      sourceType: 'bill' | 'goal'
+      priorityRank: number
+      sortOrder: number
+      cycleTarget: number
+    }> = []
 
-      const currentSum = (existingEntries || []).reduce((s: number, e: any) => s + Number(e.amount), 0)
-      const delta = targetReservedAmount - currentSum
+    bills.forEach((b: any) => {
+      const target = b.bill_type === 'installment' ? (b.installment_amount ?? b.amount) : b.amount
+      items.push({
+        id: b.id,
+        name: b.name,
+        sourceType: 'bill',
+        priorityRank: priorityRankMap[b.priority] || 3,
+        sortOrder: b.sort_order || 0,
+        cycleTarget: target || 0,
+      })
+    })
+
+    funds.forEach((f: any) => {
+      const target = f.type === 'goal' ? f.target_amount : f.recurring_amount
+      items.push({
+        id: f.id,
+        name: f.name,
+        sourceType: 'goal',
+        priorityRank: priorityRankMap[f.priority] || 3,
+        sortOrder: f.sort_order || 0,
+        cycleTarget: target || 0,
+      })
+    })
+
+    // Sort by priority (critical first), then sort_order
+    items.sort((a, b) => a.priorityRank - b.priorityRank || a.sortOrder - b.sortOrder)
+
+    const now = new Date()
+    const cycleStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().split('T')[0]
+    const cycleEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0)).toISOString().split('T')[0]
+
+    // Fetch existing reservation entries for this cycle
+    const { data: existingEntries } = await supabase
+      .from('wallet_reservation_entries')
+      .select('source_id, amount')
+      .eq('user_id', userId)
+      .eq('wallet_id', walletId)
+      .gte('cycle_start', cycleStart)
+      .lte('cycle_end', cycleEnd)
+
+    const currentReservedMap = new Map<string, number>()
+    ;(existingEntries || []).forEach((e: any) => {
+      currentReservedMap.set(e.source_id, (currentReservedMap.get(e.source_id) || 0) + Number(e.amount))
+    })
+
+    let remainingBalancePool = Math.max(0, walletBalance)
+    const newEntries: any[] = []
+
+    for (const item of items) {
+      const targetToFund = Math.max(0, item.cycleTarget)
+      const allocatedEnvelopeAmount = Math.min(targetToFund, remainingBalancePool)
+      const currentReserved = currentReservedMap.get(item.id) || 0
+      const delta = allocatedEnvelopeAmount - currentReserved
 
       if (Math.abs(delta) >= 0.01) {
-        await supabase
-          .from('wallet_reservation_entries')
-          .insert({
-            user_id: userId,
-            wallet_id: walletId,
-            source_type: singleItem.sourceType,
-            source_id: singleItem.sourceId,
-            cycle_start: cycleStart,
-            cycle_end: cycleEnd,
-            amount: delta,
-            entry_type: 'manual_adjustment',
-            reason: 'cash_deposit',
-            notes: 'Auto-synced with wallet balance',
-          })
+        newEntries.push({
+          user_id: userId,
+          wallet_id: walletId,
+          source_type: item.sourceType,
+          source_id: item.id,
+          cycle_start: cycleStart,
+          cycle_end: cycleEnd,
+          amount: delta,
+          entry_type: 'manual_adjustment',
+          reason: 'cash_deposit',
+          notes: 'Auto-waterfall allocated from wallet balance',
+        })
       }
+
+      remainingBalancePool = Math.max(0, remainingBalancePool - allocatedEnvelopeAmount)
+    }
+
+    if (newEntries.length > 0) {
+      await supabase.from('wallet_reservation_entries').insert(newEntries)
     }
   } catch (err) {
-    console.error('autoSyncSingleObligationReservation error:', err)
+    console.error('autoDistributeWalletBalanceToEnvelopes error:', err)
   }
 }
 
@@ -155,8 +204,8 @@ export async function updateWalletBalance(walletId: string, balance: number) {
       return { success: false, message: 'Failed to update balance' }
     }
 
-    // Auto-sync single obligation reservation if wallet has only 1 item
-    await autoSyncSingleObligationReservation(supabase as any, user.id, walletId, balance)
+    // Auto-waterfall distribute wallet balance across envelopes based on priority
+    await autoDistributeWalletBalanceToEnvelopes(supabase as any, user.id, walletId, balance)
 
     revalidatePath('/wallets')
     revalidatePath('/planner')
@@ -197,8 +246,8 @@ export async function depositToWallet(walletId: string, amount: number) {
       .eq('id', walletId)
       .eq('user_id', user.id)
 
-    // Auto-sync single obligation reservation
-    await autoSyncSingleObligationReservation(supabase as any, user.id, walletId, newBalance)
+    // Auto-waterfall distribute wallet balance across envelopes based on priority
+    await autoDistributeWalletBalanceToEnvelopes(supabase as any, user.id, walletId, newBalance)
 
     revalidatePath('/wallets')
     revalidatePath('/planner')
@@ -239,8 +288,8 @@ export async function withdrawFromWallet(walletId: string, amount: number) {
       .eq('id', walletId)
       .eq('user_id', user.id)
 
-    // Auto-sync single obligation reservation
-    await autoSyncSingleObligationReservation(supabase as any, user.id, walletId, newBalance)
+    // Auto-waterfall distribute wallet balance across envelopes based on priority
+    await autoDistributeWalletBalanceToEnvelopes(supabase as any, user.id, walletId, newBalance)
 
     revalidatePath('/wallets')
     revalidatePath('/planner')
