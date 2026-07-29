@@ -50,12 +50,12 @@ export function DueDayPicker({ value, onChange, error }: DueDayPickerProps) {
         <span>Due Date Timing</span>
       </Label>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <Select value={mode} onValueChange={handleModeChange}>
-          <SelectTrigger id="due-day-select">
+          <SelectTrigger id="due-day-select" className="w-full">
             <SelectValue placeholder="Select timing" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent align="start" className="min-w-[220px]">
             <SelectItem value="specific">Specific Day of Month</SelectItem>
             <SelectItem value="end_of_month">End of Month (Last Day)</SelectItem>
           </SelectContent>
