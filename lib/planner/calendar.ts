@@ -271,8 +271,12 @@ export function generateCalendarEvents(
           runnerDate.setUTCDate(runnerDate.getUTCDate() + 7)
         } else if (bill.recurrence_type === 'bi_weekly') {
           runnerDate.setUTCDate(runnerDate.getUTCDate() + 14)
+        } else if (bill.recurrence_type === 'monthly') {
+          runnerDate.setUTCMonth(runnerDate.getUTCMonth() + 1)
+        } else if (bill.recurrence_type === 'quarterly') {
+          runnerDate.setUTCMonth(runnerDate.getUTCMonth() + 3)
         } else {
-          break // monthly / quarterly / yearly — one occurrence per grid
+          runnerDate.setUTCFullYear(runnerDate.getUTCFullYear() + 1)
         }
       }
     }
@@ -380,8 +384,12 @@ export function generateCalendarEvents(
             runnerDate.setUTCDate(runnerDate.getUTCDate() + 7)
           } else if (fund.recurrence_type === 'bi_weekly') {
             runnerDate.setUTCDate(runnerDate.getUTCDate() + 14)
+          } else if (fund.recurrence_type === 'monthly') {
+            runnerDate.setUTCMonth(runnerDate.getUTCMonth() + 1)
+          } else if (fund.recurrence_type === 'quarterly') {
+            runnerDate.setUTCMonth(runnerDate.getUTCMonth() + 3)
           } else {
-            break // monthly / quarterly / yearly — one occurrence per grid
+            runnerDate.setUTCFullYear(runnerDate.getUTCFullYear() + 1)
           }
         }
       }
