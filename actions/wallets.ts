@@ -74,6 +74,63 @@ export async function createWallet(data: WalletInput) {
   }
 }
 
+// Helper: Auto-sync envelope reservation for single-obligation wallets
+async function autoSyncSingleObligationReservation(supabase: any, userId: string, walletId: string, targetReservedAmount: number) {
+  try {
+    const [billsRes, fundsRes] = await Promise.all([
+      supabase.from('bills').select('id, name').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
+      supabase.from('funds').select('id, name').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
+    ])
+
+    const bills = billsRes.data || []
+    const funds = fundsRes.data || []
+    const totalObligations = bills.length + funds.length
+
+    // Only auto-sync if there is EXACTLY 1 obligation in this wallet
+    if (totalObligations === 1) {
+      const singleItem = bills.length === 1
+        ? { sourceType: 'bill' as const, sourceId: bills[0].id }
+        : { sourceType: 'goal' as const, sourceId: funds[0].id }
+
+      const now = new Date()
+      const cycleStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().split('T')[0]
+      const cycleEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0)).toISOString().split('T')[0]
+
+      // Fetch current sum in active cycle
+      const { data: existingEntries } = await supabase
+        .from('wallet_reservation_entries')
+        .select('amount')
+        .eq('user_id', userId)
+        .eq('source_type', singleItem.sourceType)
+        .eq('source_id', singleItem.sourceId)
+        .gte('cycle_start', cycleStart)
+        .lte('cycle_end', cycleEnd)
+
+      const currentSum = (existingEntries || []).reduce((s: number, e: any) => s + Number(e.amount), 0)
+      const delta = targetReservedAmount - currentSum
+
+      if (Math.abs(delta) >= 0.01) {
+        await supabase
+          .from('wallet_reservation_entries')
+          .insert({
+            user_id: userId,
+            wallet_id: walletId,
+            source_type: singleItem.sourceType,
+            source_id: singleItem.sourceId,
+            cycle_start: cycleStart,
+            cycle_end: cycleEnd,
+            amount: delta,
+            entry_type: 'manual_adjustment',
+            reason: 'cash_deposit',
+            notes: 'Auto-synced with wallet balance',
+          })
+      }
+    }
+  } catch (err) {
+    console.error('autoSyncSingleObligationReservation error:', err)
+  }
+}
+
 export async function updateWalletBalance(walletId: string, balance: number) {
   try {
     const supabase = await createClient()
@@ -97,6 +154,9 @@ export async function updateWalletBalance(walletId: string, balance: number) {
       console.error('updateWalletBalance error:', error)
       return { success: false, message: 'Failed to update balance' }
     }
+
+    // Auto-sync single obligation reservation if wallet has only 1 item
+    await autoSyncSingleObligationReservation(supabase as any, user.id, walletId, balance)
 
     revalidatePath('/wallets')
     revalidatePath('/planner')
@@ -137,6 +197,9 @@ export async function depositToWallet(walletId: string, amount: number) {
       .eq('id', walletId)
       .eq('user_id', user.id)
 
+    // Auto-sync single obligation reservation
+    await autoSyncSingleObligationReservation(supabase as any, user.id, walletId, newBalance)
+
     revalidatePath('/wallets')
     revalidatePath('/planner')
     return { success: true, message: `Deposited ₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` }
@@ -175,6 +238,9 @@ export async function withdrawFromWallet(walletId: string, amount: number) {
       .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
       .eq('id', walletId)
       .eq('user_id', user.id)
+
+    // Auto-sync single obligation reservation
+    await autoSyncSingleObligationReservation(supabase as any, user.id, walletId, newBalance)
 
     revalidatePath('/wallets')
     revalidatePath('/planner')
