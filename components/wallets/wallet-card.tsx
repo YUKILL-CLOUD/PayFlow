@@ -11,8 +11,8 @@ import {
   RefreshCw, Settings2, BadgeDollarSign,
 } from 'lucide-react'
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel,
+  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { formatCurrency } from '@/lib/utils'
 import { syncWalletEnvelopes } from '@/actions/wallets'
@@ -139,21 +139,25 @@ export function WalletCard({
               <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Balance</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => onOpenBalanceModal(wallet, 'set')}>
-                <BadgeDollarSign className="mr-2 h-4 w-4 text-blue-500" />
-                Set Balance
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSync} disabled={syncing}>
-                <RefreshCw className={`mr-2 h-4 w-4 text-emerald-500 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? 'Syncing…' : 'Sync Envelopes'}
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Balance</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => onOpenBalanceModal(wallet, 'set')}>
+                  <BadgeDollarSign className="mr-2 h-4 w-4 text-blue-500" />
+                  Set Balance
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSync} disabled={syncing}>
+                  <RefreshCw className={`mr-2 h-4 w-4 text-emerald-500 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing…' : 'Sync Envelopes'}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Wallet</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => onEdit(wallet)}>
-                <Settings2 className="mr-2 h-4 w-4" />
-                Edit Details
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Wallet</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => onEdit(wallet)}>
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  Edit Details
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onDelete(wallet.id)} variant="destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
