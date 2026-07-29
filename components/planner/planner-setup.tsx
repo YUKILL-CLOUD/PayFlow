@@ -40,6 +40,7 @@ export function PlannerSetup({ bills, funds, profile }: PlannerSetupProps) {
   const [billOverrides, setBillOverrides] = React.useState<Record<string, number>>({})
   const [fundOverrides, setFundOverrides] = React.useState<Record<string, number>>({})
 
+  const [isFormOpen, setIsFormOpen] = React.useState(false)
   const [isGenerating, setIsGenerating] = React.useState(false)
   const [isConfirming, setIsConfirming] = React.useState(false)
   const [draft, setDraft] = React.useState<PlannerResult | null>(null)
@@ -107,17 +108,45 @@ export function PlannerSetup({ bills, funds, profile }: PlannerSetupProps) {
     }
   }
 
+  // Collapsed View: Clean Button Banner
+  if (!isFormOpen && !draft) {
+    return (
+      <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-primary/40">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm sm:text-base">Ready to Plan Your Next Payday?</h3>
+            <p className="text-xs text-muted-foreground">Setup incoming salary and auto-waterfall money into your bill envelopes.</p>
+          </div>
+        </div>
+        <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto shrink-0 shadow-sm">
+          <Sparkles className="mr-2 h-4 w-4" />
+          Plan Next Payday
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in-50 duration-300">
       <div className="rounded-xl border bg-card p-6 shadow-sm space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Sparkles className="h-6 w-6" />
+        <div className="flex items-center justify-between gap-3 border-b pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold tracking-tight">Generate Payday Plan</h2>
+              <p className="text-xs text-muted-foreground">Setup your incoming salary and customize overrides to generate your plan.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">Generate Payday Plan</h2>
-            <p className="text-sm text-muted-foreground">Setup your incoming salary and customize overrides to generate your plan.</p>
-          </div>
+          {!draft && (
+            <Button variant="ghost" size="sm" onClick={() => setIsFormOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
+              Cancel
+            </Button>
+          )}
         </div>
 
         {/* Schedule Info Banner */}
