@@ -51,7 +51,7 @@ export function FundForm({ wallets, defaultValues, onSubmit, onSuccess, onCancel
       target_date: defaultValues?.target_date || '',
       start_date: defaultValues?.start_date || '',
       recurrence_type: defaultValues?.recurrence_type || 'every_payday',
-      due_day: defaultValues?.due_day || null,
+      due_day: defaultValues?.due_day ?? null,
       notes: defaultValues?.notes || '',
     },
   })

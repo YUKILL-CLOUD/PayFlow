@@ -28,6 +28,7 @@ export function BillFormDialog({ open, onOpenChange, wallets, bill, onSubmit }: 
         </DialogHeader>
         <div className="py-2">
           <BillForm
+            key={bill?.id || 'new-bill'}
             wallets={wallets}
             defaultValues={bill}
             onSubmit={onSubmit}

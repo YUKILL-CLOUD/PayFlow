@@ -38,7 +38,7 @@ export async function createFund(data: FundInput) {
     const recurrenceRule = {
       frequency: recurrence_type,
       interval: 1,
-      by_day_of_month: recurrence_type === 'monthly' || recurrence_type === 'yearly' ? due_day : null,
+      by_day_of_month: (recurrence_type === 'monthly' || recurrence_type === 'yearly') ? (due_day ?? null) : null,
     }
 
     const { error: insertError } = await (supabase as any)
@@ -93,7 +93,7 @@ export async function updateFund(id: string, data: FundInput) {
     const recurrenceRule = {
       frequency: recurrence_type,
       interval: 1,
-      by_day_of_month: recurrence_type === 'monthly' || recurrence_type === 'yearly' ? due_day : null,
+      by_day_of_month: (recurrence_type === 'monthly' || recurrence_type === 'yearly') ? (due_day ?? null) : null,
     }
 
     const { error: updateError } = await (supabase as any)

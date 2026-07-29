@@ -61,11 +61,11 @@ export async function createBill(data: BillInput) {
         amount: amount ?? 0,
         is_variable: is_variable ?? false,
         recurrence_type: effectiveRecurrenceType,
-        due_day: effectiveRecurrenceType === 'every_payday' ? null : due_day,
+        due_day: effectiveRecurrenceType === 'every_payday' ? null : (due_day ?? null),
         recurrence_rule: {
           frequency: effectiveRecurrenceType,
           interval: 1,
-          by_day_of_month: effectiveRecurrenceType === 'monthly' || effectiveRecurrenceType === 'yearly' ? due_day : null,
+          by_day_of_month: (effectiveRecurrenceType === 'monthly' || effectiveRecurrenceType === 'yearly') ? (due_day ?? null) : null,
         },
       }
     } else if (bill_type === 'installment') {
@@ -155,11 +155,11 @@ export async function updateBill(id: string, data: BillInput) {
         amount: amount ?? 0,
         is_variable: is_variable ?? false,
         recurrence_type: effectiveRecurrenceType,
-        due_day: effectiveRecurrenceType === 'every_payday' ? null : due_day,
+        due_day: effectiveRecurrenceType === 'every_payday' ? null : (due_day ?? null),
         recurrence_rule: {
           frequency: effectiveRecurrenceType,
           interval: 1,
-          by_day_of_month: effectiveRecurrenceType === 'monthly' || effectiveRecurrenceType === 'yearly' ? due_day : null,
+          by_day_of_month: (effectiveRecurrenceType === 'monthly' || effectiveRecurrenceType === 'yearly') ? (due_day ?? null) : null,
         },
         // Clear installment fields
         total_installments: null,

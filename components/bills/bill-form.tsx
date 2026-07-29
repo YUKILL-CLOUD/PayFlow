@@ -61,7 +61,7 @@ export function BillForm({ wallets, defaultValues, onSubmit, onSuccess, onCancel
       wallet_id: defaultValues?.wallet_id || '',
       priority: defaultValues?.priority || 'high',
       recurrence_type: defaultValues?.recurrence_type || 'monthly',
-      due_day: defaultValues?.due_day || null,
+      due_day: defaultValues?.due_day ?? null,
       notes: defaultValues?.notes || '',
       payee_name: defaultValues?.payee_name || '',
       // Installment fields

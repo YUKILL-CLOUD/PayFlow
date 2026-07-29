@@ -28,6 +28,7 @@ export function FundFormDialog({ open, onOpenChange, wallets, fund, onSubmit }: 
         </DialogHeader>
         <div className="py-2">
           <FundForm
+            key={fund?.id || 'new-fund'}
             wallets={wallets}
             defaultValues={fund}
             onSubmit={onSubmit}
