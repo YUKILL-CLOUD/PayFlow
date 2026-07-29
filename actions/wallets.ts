@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { walletSchema, type WalletInput } from '@/lib/schemas/wallet'
+import { calculateNextDue } from '@/lib/planner/dates'
 
 // ----------------------------------------------------------------------------
 // Server Actions
@@ -83,18 +84,20 @@ export async function autoDistributeWalletBalanceToEnvelopes(supabase: any, user
       balance = w?.current_balance || 0
     }
 
-    const billsRes = await supabase.from('bills').select('id, name, amount, installment_amount, bill_type, priority, sort_order').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true)
+    const billsRes = await supabase.from('bills').select('id, name, amount, installment_amount, bill_type, priority, sort_order, recurrence_type, due_day, recurrence_rule, first_due_date').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true)
     const bills = billsRes.data || []
 
     if (bills.length === 0) return
 
     const priorityRankMap: Record<string, number> = { critical: 1, high: 2, medium: 3, optional: 4 }
+    const today = new Date()
 
     // Unified list of Bill obligations
     const items: Array<{
       id: string
       name: string
       sourceType: 'bill'
+      nextDueMs: number
       priorityRank: number
       sortOrder: number
       cycleTarget: number
@@ -102,18 +105,31 @@ export async function autoDistributeWalletBalanceToEnvelopes(supabase: any, user
 
     bills.forEach((b: any) => {
       const target = b.bill_type === 'installment' ? (b.installment_amount ?? b.amount) : b.amount
+
+      let nextDueMs = Infinity
+      if (b.bill_type === 'one_time') {
+        const targetDateStr = b.first_due_date || b.recurrence_rule?.target_date
+        if (targetDateStr) nextDueMs = new Date(targetDateStr).getTime()
+      } else if (b.recurrence_type === 'every_payday') {
+        nextDueMs = today.getTime() // Due immediately / on next payday
+      } else {
+        const nextDue = calculateNextDue(today, b.recurrence_type, b.due_day, b.recurrence_rule)
+        nextDueMs = nextDue.getTime()
+      }
+
       items.push({
         id: b.id,
         name: b.name,
         sourceType: 'bill',
+        nextDueMs,
         priorityRank: priorityRankMap[b.priority] || 3,
         sortOrder: b.sort_order || 0,
         cycleTarget: target || 0,
       })
     })
 
-    // Sort by priority (critical first), then sort_order
-    items.sort((a, b) => a.priorityRank - b.priorityRank || a.sortOrder - b.sortOrder)
+    // Sort by Due Date Urgency (soonest first), then Priority (critical first), then sortOrder
+    items.sort((a, b) => a.nextDueMs - b.nextDueMs || a.priorityRank - b.priorityRank || a.sortOrder - b.sortOrder)
 
     const now = new Date()
     const cycleStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().split('T')[0]
