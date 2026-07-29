@@ -103,7 +103,7 @@ export function WalletCard({
       className={`
         group relative rounded-2xl border bg-card shadow-sm
         transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5
-        flex flex-col h-full
+        flex flex-col
         ${featured ? 'ring-2 ring-primary/20' : ''}
       `}
     >

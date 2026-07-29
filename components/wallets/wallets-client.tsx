@@ -216,7 +216,7 @@ interface BentoGridProps {
 
 function BentoGrid({ wallets, walletDataMap, onEdit, onDelete, onOpenBalanceModal, onOpenAdjustModal }: BentoGridProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-auto">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-auto items-start">
       {wallets.map((wallet: any, idx: number) => {
         const data = walletDataMap.get(wallet.id) || { total: 0, envelopes: [] }
         // First card (largest balance) spans 2 columns on sm+ for bento effect
