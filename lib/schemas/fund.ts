@@ -19,7 +19,7 @@ export const fundSchema = z.object({
     'yearly',
     'one_time'
   ] as const),
-  due_day: z.number().min(1, 'Day must be 1 or greater').max(31, 'Day must be 31 or less').optional().nullable(),
+  due_day: z.number().min(0, 'Day must be 0 or greater').max(31, 'Day must be 31 or less').optional().nullable(),
   notes: z.string().max(500, 'Notes are too long').optional().nullable(),
 })
 

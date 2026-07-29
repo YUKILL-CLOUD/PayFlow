@@ -46,6 +46,13 @@ describe('Dates and Recurrence calculations', () => {
 
     const nextDueAfter = calculateNextDue('2026-07-15', 'monthly', dueDay)
     assert.strictEqual(nextDueAfter.toISOString().split('T')[0], '2026-08-13')
+
+    // Test due_day === 0 (End of Month: e.g. July 31, Feb 28 in non-leap year 2026)
+    const eomJuly = calculateNextDue('2026-07-10', 'monthly', 0)
+    assert.strictEqual(eomJuly.toISOString().split('T')[0], '2026-07-31')
+
+    const eomFeb = calculateNextDue('2026-02-10', 'monthly', 0)
+    assert.strictEqual(eomFeb.toISOString().split('T')[0], '2026-02-28')
   })
 
   test('calculatePreviousDue: monthly cycle previous boundary', () => {

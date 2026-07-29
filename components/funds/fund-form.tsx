@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { DueDayPicker } from '@/components/common/due-day-picker'
 import type { Database } from '@/types/database'
 
 type Wallet = Database['public']['Tables']['wallets']['Row']
@@ -200,22 +201,11 @@ export function FundForm({ wallets, defaultValues, onSubmit, onSuccess, onCancel
 
           {/* Conditional due day picker based on recurrence_type */}
           {recurrenceType === 'monthly' && (
-            <div className="space-y-2">
-              <Label htmlFor="due-day">Due Day of Month</Label>
-              <Input
-                id="due-day"
-                type="number"
-                min="1"
-                max="31"
-                placeholder="e.g. 13"
-                value={watch('due_day') || ''}
-                onChange={(e) => {
-                  const val = e.target.value ? parseInt(e.target.value) : null
-                  setValue('due_day', val)
-                }}
-              />
-              {errors.due_day && <p className="text-xs text-destructive">{errors.due_day.message}</p>}
-            </div>
+            <DueDayPicker
+              value={watch('due_day')}
+              onChange={(val) => setValue('due_day', val)}
+              error={errors.due_day?.message}
+            />
           )}
 
           {recurrenceType === 'weekly' && (

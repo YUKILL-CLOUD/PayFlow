@@ -54,31 +54,44 @@ export function calculateNextDue(
     }
 
     case 'monthly': {
-      const targetDay = dueDay ?? 1
+      const isEndOfMonth = dueDay === 0
+      // Resolve the actual calendar day: 0 → last day of the month, else use the number
+      const resolveDay = (year: number, month: number) => {
+        if (isEndOfMonth) return new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+        return dueDay ?? 1
+      }
+
+      let targetDay = resolveDay(plannedYear, plannedMonth)
       let nextDue = new Date(Date.UTC(plannedYear, plannedMonth, targetDay))
-      
+
       // If the target due day has already passed in the planned payday's month,
       // roll to the next month
       if (planned.getUTCDate() > targetDay) {
+        targetDay = resolveDay(plannedYear, plannedMonth + 1)
         nextDue = new Date(Date.UTC(plannedYear, plannedMonth + 1, targetDay))
       }
       return nextDue
     }
 
     case 'quarterly': {
-      const targetDay = dueDay ?? 1
       const quarterMonth = Math.floor(plannedMonth / 3) * 3
-      let nextDue = new Date(Date.UTC(plannedYear, quarterMonth + 2, targetDay))
-      
+      const resolveQDay = (month: number) =>
+        dueDay === 0 ? new Date(Date.UTC(plannedYear, month + 1, 0)).getUTCDate() : (dueDay ?? 1)
+      const endMonth = quarterMonth + 2
+      let nextDue = new Date(Date.UTC(plannedYear, endMonth, resolveQDay(endMonth)))
+
       if (planned > nextDue) {
-        nextDue = new Date(Date.UTC(plannedYear, quarterMonth + 5, targetDay))
+        const nextEndMonth = quarterMonth + 5
+        nextDue = new Date(Date.UTC(plannedYear, nextEndMonth, resolveQDay(nextEndMonth)))
       }
       return nextDue
     }
 
     case 'yearly': {
       const targetMonth = rule?.by_month ?? 12
-      const targetDay = dueDay ?? 25
+      const targetDay = dueDay === 0
+        ? new Date(Date.UTC(plannedYear, targetMonth, 0)).getUTCDate()
+        : (dueDay ?? 25)
       
       let nextDue = new Date(Date.UTC(plannedYear, targetMonth - 1, targetDay))
       if (planned > nextDue) {

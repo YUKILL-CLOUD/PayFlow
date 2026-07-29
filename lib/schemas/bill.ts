@@ -22,7 +22,7 @@ export const billSchema = z.object({
     'yearly',
     'one_time',
   ] as const).optional(),
-  due_day: z.number().min(1).max(31).optional().nullable(),
+  due_day: z.number().min(0, 'Day must be between 0 and 31').max(31, 'Day must be 31 or less').optional().nullable(),
 
   // --- Installment-only fields ---
   total_installments: z.number().int().min(1, 'Must have at least 1 payment').optional().nullable(),
