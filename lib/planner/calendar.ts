@@ -239,12 +239,21 @@ export function generateCalendarEvents(
         })
       }
     } else {
-      // Recurring Fund
-      if (fund.recurrence_type !== 'every_payday') {
-        const nextDue = calculateNextDue(gridStartStr, fund.recurrence_type, fund.due_day, fund.recurrence_rule)
+      // Recurring Fund — show all types on the calendar, including every_payday
+      // For every_payday funds, treat as monthly using due_day for calendar display
+      const displayRecurrenceType = fund.recurrence_type === 'every_payday' ? 'monthly' : fund.recurrence_type
+
+      // For monthly-equivalent display, we may need to generate multiple occurrences across the grid
+      let runnerDate = new Date(gridStart)
+      const seen = new Set<string>()
+
+      while (runnerDate <= gridEnd) {
+        const runnerStr = runnerDate.toISOString().split('T')[0]
+        const nextDue = calculateNextDue(runnerStr, displayRecurrenceType, fund.due_day, fund.recurrence_rule)
         const nextDueStr = nextDue.toISOString().split('T')[0]
 
-        if (nextDue >= gridStart && nextDue <= gridEnd) {
+        if (nextDue >= gridStart && nextDue <= gridEnd && !seen.has(nextDueStr)) {
+          seen.add(nextDueStr)
           events.push({
             id: `fund-rec-${fund.id}-${nextDueStr}`,
             date: nextDueStr,
@@ -258,6 +267,16 @@ export function generateCalendarEvents(
             },
             rawItem: fund
           })
+        }
+
+        // Step forward by appropriate interval to find next occurrence
+        if (displayRecurrenceType === 'weekly') {
+          runnerDate.setUTCDate(runnerDate.getUTCDate() + 7)
+        } else if (displayRecurrenceType === 'bi_weekly') {
+          runnerDate.setUTCDate(runnerDate.getUTCDate() + 14)
+        } else {
+          // monthly / quarterly / yearly — one occurrence max per grid
+          break
         }
       }
     }
