@@ -162,6 +162,36 @@ async function autoDistributeWalletBalanceToEnvelopes(supabase: any, userId: str
   }
 }
 
+/**
+ * Manually trigger the auto-waterfall distribution for a wallet's current balance.
+ * Used by the "Sync Envelopes" button to initialise pre-existing wallet balances.
+ */
+export async function syncWalletEnvelopes(walletId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { success: false, message: 'Unauthorized' }
+
+    const { data: wallet } = await (supabase as any)
+      .from('wallets')
+      .select('current_balance')
+      .eq('id', walletId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!wallet) return { success: false, message: 'Wallet not found' }
+
+    await autoDistributeWalletBalanceToEnvelopes(supabase as any, user.id, walletId, wallet.current_balance || 0)
+
+    revalidatePath('/wallets')
+    revalidatePath('/planner')
+    return { success: true, message: 'Envelopes synced with current balance' }
+  } catch (err) {
+    console.error('syncWalletEnvelopes error:', err)
+    return { success: false, message: 'An unexpected error occurred' }
+  }
+}
+
 export async function updateWalletBalance(walletId: string, balance: number) {
   try {
     const supabase = await createClient()
