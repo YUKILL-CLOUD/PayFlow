@@ -136,18 +136,90 @@ export function generateCalendarEvents(
       return
     }
 
-    // Generate occurrences across the grid window
-    let runnerDate = new Date(gridStart)
-    while (runnerDate <= gridEnd) {
-      const runnerStr = runnerDate.toISOString().split('T')[0]
-      const nextDue = calculateNextDue(runnerStr, bill.recurrence_type, bill.due_day, bill.recurrence_rule)
-      const nextDueStr = nextDue.toISOString().split('T')[0]
+    if (bill.recurrence_type === 'every_payday') {
+      // every_payday bills appear on every scheduled payday date in the grid
+      scheduledPaydayDates.forEach(pd => {
+        const pdStr = pd.toISOString().split('T')[0]
+        events.push({
+          id: `bill-${bill.id}-${pdStr}`,
+          date: pdStr,
+          title: bill.name,
+          type: 'bill',
+          amount: bill.amount,
+          priority: bill.priority,
+          walletId: bill.wallet_id,
+          details: {
+            recurrenceType: 'every_payday',
+            billType: bill.bill_type ?? 'recurring',
+            payeeName: bill.payee_name ?? undefined,
+          },
+          rawItem: bill
+        })
+      })
+      // Also include DB payday dates in the grid
+      paydays.forEach(p => {
+        const pdStr = p.payday_date
+        if (pdStr >= gridStartStr && pdStr <= gridEndStr) {
+          const exists = events.some(e => e.id === `bill-${bill.id}-${pdStr}`)
+          if (!exists) {
+            events.push({
+              id: `bill-${bill.id}-${pdStr}`,
+              date: pdStr,
+              title: bill.name,
+              type: 'bill',
+              amount: bill.amount,
+              priority: bill.priority,
+              walletId: bill.wallet_id,
+              details: {
+                recurrenceType: 'every_payday',
+                billType: bill.bill_type ?? 'recurring',
+                payeeName: bill.payee_name ?? undefined,
+              },
+              rawItem: bill
+            })
+          }
+        }
+      })
+    } else if (bill.bill_type === 'one_time') {
+      // One-time bill uses first_due_date or target_date in recurrence_rule
+      const dueStr = bill.first_due_date || (bill.recurrence_rule as any)?.target_date
+      if (dueStr && dueStr >= gridStartStr && dueStr <= gridEndStr) {
+        const nextDue = new Date(dueStr)
+        const paydaysRemaining = calculatePaydaysRemaining(referenceDate, nextDue, profile)
+        const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
+        const estimatedPerPayday = Math.round((bill.amount / paydaysDiv) * 100) / 100
 
-      if (nextDue >= gridStart && nextDue <= gridEnd) {
-        // Avoid duplicate additions for the same bill occurrence
-        const exists = events.some(e => e.id === `bill-${bill.id}-${nextDueStr}`)
-        if (!exists) {
-          // Build installment-specific details
+        events.push({
+          id: `bill-${bill.id}-${dueStr}`,
+          date: dueStr,
+          title: bill.name,
+          type: 'bill',
+          amount: bill.amount,
+          priority: bill.priority,
+          walletId: bill.wallet_id,
+          details: {
+            recurrenceType: 'one_time',
+            billType: 'one_time',
+            payeeName: bill.payee_name ?? undefined,
+            paydaysRemaining,
+            estimatedPerPayday,
+          },
+          rawItem: bill
+        })
+      }
+    } else {
+      // Recurring / Installment bills
+      let runnerDate = new Date(gridStart)
+      const seen = new Set<string>()
+
+      while (runnerDate <= gridEnd) {
+        const runnerStr = runnerDate.toISOString().split('T')[0]
+        const nextDue = calculateNextDue(runnerStr, bill.recurrence_type, bill.due_day, bill.recurrence_rule)
+        const nextDueStr = nextDue.toISOString().split('T')[0]
+
+        if (nextDue >= gridStart && nextDue <= gridEnd && !seen.has(nextDueStr)) {
+          seen.add(nextDueStr)
+
           let detailsPayload: CalendarEvent['details'] = {
             recurrenceType: bill.recurrence_type,
             billType: bill.bill_type ?? 'recurring',
@@ -171,7 +243,6 @@ export function generateCalendarEvents(
               paydaysRemaining: paymentsRemaining,
             }
           } else {
-            // Recurring / one-time: calculate per-payday estimate
             const paydaysRemaining = calculatePaydaysRemaining(referenceDate, nextDue, profile)
             const paydaysDiv = paydaysRemaining > 0 ? paydaysRemaining : 1
             const estimatedPerPayday = Math.round((bill.amount / paydaysDiv) * 100) / 100
@@ -194,12 +265,15 @@ export function generateCalendarEvents(
             rawItem: bill
           })
         }
-      }
 
-      // Step forward
-      runnerDate.setUTCDate(runnerDate.getUTCDate() + (bill.recurrence_type === 'weekly' ? 7 : 14))
-      if (bill.recurrence_type === 'monthly' || bill.recurrence_type === 'quarterly' || bill.recurrence_type === 'yearly' || bill.recurrence_type === 'every_payday' || bill.recurrence_type === 'one_time') {
-        break
+        // Step forward
+        if (bill.recurrence_type === 'weekly') {
+          runnerDate.setUTCDate(runnerDate.getUTCDate() + 7)
+        } else if (bill.recurrence_type === 'bi_weekly') {
+          runnerDate.setUTCDate(runnerDate.getUTCDate() + 14)
+        } else {
+          break // monthly / quarterly / yearly — one occurrence per grid
+        }
       }
     }
   })

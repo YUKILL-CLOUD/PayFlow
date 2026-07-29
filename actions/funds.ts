@@ -67,6 +67,9 @@ export async function createFund(data: FundInput) {
     }
 
     revalidatePath('/funds')
+    revalidatePath('/calendar')
+    revalidatePath('/planner')
+    revalidatePath('/wallets')
     return { success: true, message: 'Fund created successfully' }
   } catch (error) {
     console.error('createFund error:', error)
@@ -122,6 +125,9 @@ export async function updateFund(id: string, data: FundInput) {
     }
 
     revalidatePath('/funds')
+    revalidatePath('/calendar')
+    revalidatePath('/planner')
+    revalidatePath('/wallets')
     return { success: true, message: 'Fund updated successfully' }
   } catch (error) {
     console.error('updateFund error:', error)
@@ -150,6 +156,9 @@ export async function archiveFund(id: string) {
     }
 
     revalidatePath('/funds')
+    revalidatePath('/calendar')
+    revalidatePath('/planner')
+    revalidatePath('/wallets')
     return { success: true, message: 'Fund archived successfully' }
   } catch (error) {
     console.error('archiveFund error:', error)

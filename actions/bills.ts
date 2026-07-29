@@ -111,6 +111,9 @@ export async function createBill(data: BillInput) {
     }
 
     revalidatePath('/bills')
+    revalidatePath('/calendar')
+    revalidatePath('/planner')
+    revalidatePath('/wallets')
     return { success: true, message: 'Bill created successfully' }
   } catch (error) {
     console.error('createBill error:', error)
@@ -212,6 +215,9 @@ export async function updateBill(id: string, data: BillInput) {
     }
 
     revalidatePath('/bills')
+    revalidatePath('/calendar')
+    revalidatePath('/planner')
+    revalidatePath('/wallets')
     return { success: true, message: 'Bill updated successfully' }
   } catch (error) {
     console.error('updateBill error:', error)
@@ -240,6 +246,9 @@ export async function archiveBill(id: string) {
     }
 
     revalidatePath('/bills')
+    revalidatePath('/calendar')
+    revalidatePath('/planner')
+    revalidatePath('/wallets')
     return { success: true, message: 'Bill archived successfully' }
   } catch (error) {
     console.error('archiveBill error:', error)
