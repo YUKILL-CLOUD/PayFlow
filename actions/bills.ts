@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { billSchema, type BillInput } from '@/lib/schemas/bill'
+import { autoDistributeWalletBalanceToEnvelopes } from '@/actions/wallets'
 
 // ----------------------------------------------------------------------------
 // Server Actions
@@ -110,6 +111,10 @@ export async function createBill(data: BillInput) {
       return { success: false, message: 'Failed to create bill' }
     }
 
+    if (wallet_id) {
+      await autoDistributeWalletBalanceToEnvelopes(supabase, user.id, wallet_id)
+    }
+
     revalidatePath('/bills')
     revalidatePath('/calendar')
     revalidatePath('/planner')
@@ -214,6 +219,10 @@ export async function updateBill(id: string, data: BillInput) {
       return { success: false, message: 'Failed to update bill' }
     }
 
+    if (wallet_id) {
+      await autoDistributeWalletBalanceToEnvelopes(supabase, user.id, wallet_id)
+    }
+
     revalidatePath('/bills')
     revalidatePath('/calendar')
     revalidatePath('/planner')
@@ -234,6 +243,13 @@ export async function archiveBill(id: string) {
       return { success: false, message: 'Unauthorized' }
     }
 
+    const { data: bill } = await (supabase as any)
+      .from('bills')
+      .select('wallet_id')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
     const { error: archiveError } = await (supabase as any)
       .from('bills')
       .update({ is_active: false, status: 'archived' })
@@ -243,6 +259,10 @@ export async function archiveBill(id: string) {
     if (archiveError) {
       console.error('Archive error:', archiveError)
       return { success: false, message: 'Failed to archive bill' }
+    }
+
+    if (bill?.wallet_id) {
+      await autoDistributeWalletBalanceToEnvelopes(supabase, user.id, bill.wallet_id)
     }
 
     revalidatePath('/bills')

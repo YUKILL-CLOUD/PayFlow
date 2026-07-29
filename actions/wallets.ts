@@ -75,8 +75,14 @@ export async function createWallet(data: WalletInput) {
 }
 
 // Helper: Priority-based auto-distribution of wallet balance to Bill envelopes
-async function autoDistributeWalletBalanceToEnvelopes(supabase: any, userId: string, walletId: string, walletBalance: number) {
+export async function autoDistributeWalletBalanceToEnvelopes(supabase: any, userId: string, walletId: string, walletBalance?: number) {
   try {
+    let balance = walletBalance
+    if (balance === undefined) {
+      const { data: w } = await supabase.from('wallets').select('current_balance').eq('id', walletId).eq('user_id', userId).single()
+      balance = w?.current_balance || 0
+    }
+
     const billsRes = await supabase.from('bills').select('id, name, amount, installment_amount, bill_type, priority, sort_order').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true)
     const bills = billsRes.data || []
 
@@ -127,7 +133,7 @@ async function autoDistributeWalletBalanceToEnvelopes(supabase: any, userId: str
       currentReservedMap.set(e.source_id, (currentReservedMap.get(e.source_id) || 0) + Number(e.amount))
     })
 
-    let remainingBalancePool = Math.max(0, walletBalance)
+    let remainingBalancePool = Math.max(0, balance || 0)
     const newEntries: any[] = []
 
     for (const item of items) {
