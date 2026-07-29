@@ -74,27 +74,21 @@ export async function createWallet(data: WalletInput) {
   }
 }
 
-// Helper: Priority-based auto-distribution of wallet balance to envelopes
+// Helper: Priority-based auto-distribution of wallet balance to Bill envelopes
 async function autoDistributeWalletBalanceToEnvelopes(supabase: any, userId: string, walletId: string, walletBalance: number) {
   try {
-    const [billsRes, fundsRes] = await Promise.all([
-      supabase.from('bills').select('id, name, amount, installment_amount, bill_type, priority, sort_order').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
-      supabase.from('funds').select('id, name, type, recurring_amount, target_amount, priority, sort_order').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true),
-    ])
-
+    const billsRes = await supabase.from('bills').select('id, name, amount, installment_amount, bill_type, priority, sort_order').eq('wallet_id', walletId).eq('user_id', userId).eq('is_active', true)
     const bills = billsRes.data || []
-    const funds = fundsRes.data || []
-    const totalObligations = bills.length + funds.length
 
-    if (totalObligations === 0) return
+    if (bills.length === 0) return
 
     const priorityRankMap: Record<string, number> = { critical: 1, high: 2, medium: 3, optional: 4 }
 
-    // Unified list of obligations
+    // Unified list of Bill obligations
     const items: Array<{
       id: string
       name: string
-      sourceType: 'bill' | 'goal'
+      sourceType: 'bill'
       priorityRank: number
       sortOrder: number
       cycleTarget: number
@@ -108,18 +102,6 @@ async function autoDistributeWalletBalanceToEnvelopes(supabase: any, userId: str
         sourceType: 'bill',
         priorityRank: priorityRankMap[b.priority] || 3,
         sortOrder: b.sort_order || 0,
-        cycleTarget: target || 0,
-      })
-    })
-
-    funds.forEach((f: any) => {
-      const target = f.type === 'goal' ? f.target_amount : f.recurring_amount
-      items.push({
-        id: f.id,
-        name: f.name,
-        sourceType: 'goal',
-        priorityRank: priorityRankMap[f.priority] || 3,
-        sortOrder: f.sort_order || 0,
         cycleTarget: target || 0,
       })
     })

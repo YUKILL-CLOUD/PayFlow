@@ -323,18 +323,19 @@ export async function lockPaydayAction(paydayId: string) {
         .eq('user_id', user.id)
         .eq('is_completed', true)
 
-      if (completedAllocs && completedAllocs.length > 0) {
+      const billAllocs = (completedAllocs || []).filter((alloc: any) => alloc.bill_id)
+
+      if (billAllocs.length > 0) {
         const cycleStart = paydayDate
-        // Calculate cycle end date (30 days out as default cycle window end for reservation matching)
         const d = new Date(paydayDate)
         d.setMonth(d.getMonth() + 1)
         const cycleEnd = d.toISOString().split('T')[0]
 
-        const ledgerEntries = completedAllocs.map((alloc: any) => ({
+        const ledgerEntries = billAllocs.map((alloc: any) => ({
           user_id: user.id,
           wallet_id: alloc.wallet_id,
-          source_type: alloc.bill_id ? 'bill' : 'goal',
-          source_id: alloc.bill_id || alloc.fund_id,
+          source_type: 'bill',
+          source_id: alloc.bill_id,
           cycle_start: cycleStart,
           cycle_end: cycleEnd,
           amount: alloc.amount,

@@ -20,7 +20,7 @@ type Fund = Database['public']['Tables']['funds']['Row']
 interface EnvelopeItem {
   id: string
   name: string
-  sourceType: 'bill' | 'goal'
+  sourceType: 'bill'
   reserved: number
   target: number
 }

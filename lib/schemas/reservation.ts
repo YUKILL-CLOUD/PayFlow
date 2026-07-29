@@ -9,7 +9,7 @@ export const ADJUSTMENT_REASONS = [
 
 export const reservationAdjustmentSchema = z.object({
   wallet_id: z.string().min(1, 'Wallet is required'),
-  source_type: z.enum(['bill', 'goal'] as const),
+  source_type: z.enum(['bill'] as const),
   source_id: z.string().min(1, 'Source obligation is required'),
   new_reserved_amount: z.number().min(0, 'Reserved amount cannot be negative'),
   reason: z.enum(['paid_early', 'cash_deposit', 'correction', 'other'] as const),

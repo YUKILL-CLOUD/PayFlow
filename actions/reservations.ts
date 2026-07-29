@@ -82,23 +82,19 @@ export async function getActiveReservations(userId: string, dateStr: string) {
     .from('wallet_reservation_entries')
     .select('wallet_id, source_type, source_id, amount')
     .eq('user_id', userId)
+    .eq('source_type', 'bill')
     .lte('cycle_start', dateStr)
     .gte('cycle_end', dateStr)
 
   const bills: Record<string, number> = {}
-  const goals: Record<string, number> = {}
   const walletTotals: Record<string, number> = {}
 
   const entryList: any[] = entries || []
   entryList.forEach((e: any) => {
     const amt = Number(e.amount)
-    if (e.source_type === 'bill') {
-      bills[e.source_id] = (bills[e.source_id] || 0) + amt
-    } else {
-      goals[e.source_id] = (goals[e.source_id] || 0) + amt
-    }
+    bills[e.source_id] = (bills[e.source_id] || 0) + amt
     walletTotals[e.wallet_id] = (walletTotals[e.wallet_id] || 0) + amt
   })
 
-  return { bills, goals, walletTotals }
+  return { bills, goals: {}, walletTotals }
 }

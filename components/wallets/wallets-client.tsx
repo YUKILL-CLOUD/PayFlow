@@ -52,7 +52,7 @@ export function WalletsClient({ initialWallets, bills, funds, reservationEntries
   const [adjustModal, setAdjustModal] = React.useState<{
     open: boolean
     walletId: string
-    sourceType: 'bill' | 'goal'
+    sourceType: 'bill'
     sourceId: string
     sourceName: string
     currentReserved: number
@@ -67,7 +67,7 @@ export function WalletsClient({ initialWallets, bills, funds, reservationEntries
 
   // Map reservation totals & envelope breakdowns per wallet
   const walletDataMap = React.useMemo(() => {
-    const map = new Map<string, { total: number; envelopes: Array<{ id: string; name: string; sourceType: 'bill' | 'goal'; reserved: number; target: number }> }>()
+    const map = new Map<string, { total: number; envelopes: Array<{ id: string; name: string; sourceType: 'bill'; reserved: number; target: number }> }>()
 
     initialWallets.forEach(w => {
       map.set(w.id, { total: 0, envelopes: [] })
@@ -91,23 +91,6 @@ export function WalletsClient({ initialWallets, bills, funds, reservationEntries
           id: b.id,
           name: b.name,
           sourceType: 'bill',
-          reserved,
-          target,
-        })
-      }
-    })
-
-    // Match funds/goals to wallets
-    funds.forEach(f => {
-      const data = map.get(f.wallet_id)
-      if (data) {
-        const reserved = Math.max(0, sourceReservedMap.get(f.id) || 0)
-        const target = f.type === 'goal' ? f.target_amount : f.recurring_amount
-        data.total += reserved
-        data.envelopes.push({
-          id: f.id,
-          name: f.name,
-          sourceType: 'goal',
           reserved,
           target,
         })
@@ -152,7 +135,7 @@ export function WalletsClient({ initialWallets, bills, funds, reservationEntries
     setBalanceModal({ open: true, wallet, mode })
   }
 
-  const handleOpenAdjustModal = (walletId: string, item: { id: string; name: string; sourceType: 'bill' | 'goal'; reserved: number }) => {
+  const handleOpenAdjustModal = (walletId: string, item: { id: string; name: string; sourceType: 'bill'; reserved: number }) => {
     setAdjustModal({
       open: true,
       walletId,

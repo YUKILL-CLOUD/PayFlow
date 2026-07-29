@@ -17,7 +17,7 @@ interface AdjustReservationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   walletId: string
-  sourceType: 'bill' | 'goal'
+  sourceType: 'bill'
   sourceId: string
   sourceName: string
   currentReserved: number
