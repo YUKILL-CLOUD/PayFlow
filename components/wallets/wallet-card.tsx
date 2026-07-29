@@ -101,14 +101,16 @@ export function WalletCard({
   return (
     <div
       className={`
-        group relative overflow-hidden rounded-2xl border bg-card shadow-sm
+        group relative rounded-2xl border bg-card shadow-sm
         transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5
         flex flex-col h-full
         ${featured ? 'ring-2 ring-primary/20' : ''}
       `}
     >
-      {/* Color accent bar */}
-      <div className={`absolute top-0 left-0 right-0 h-1 ${colorObj.class}`} />
+      {/* Color accent bar — sits inside a clipping wrapper so it doesn't affect the dropdown portal */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl overflow-hidden pointer-events-none">
+        <div className={`w-full h-full ${colorObj.class}`} />
+      </div>
 
       {/* Card body */}
       <div className="flex flex-col flex-1 p-4 sm:p-5 pt-5">
