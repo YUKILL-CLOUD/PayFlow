@@ -175,41 +175,43 @@ export function WalletCard({
           </p>
         </div>
 
-        {/* Health badge + funding progress bar */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <Badge variant="outline" className={`${health.bg} ${health.text} border-0 text-[10px] font-medium px-2 py-0.5 gap-1`}>
-              <health.Icon className="h-3 w-3" />
-              {health.label}
-            </Badge>
-            {reservedTotal > 0 && (
-              <span className="text-[10px] text-muted-foreground">{Math.round(fundedPct)}% funded</span>
-            )}
-          </div>
-          {/* Funding progress bar */}
-          {reservedTotal > 0 && (
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${health.bar}`}
-                style={{ width: `${fundedPct}%` }}
-              />
+        {/* Health badge + Reserved/Available breakdown (only for wallets with bill envelopes) */}
+        {envelopes.length > 0 && (
+          <>
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <Badge variant="outline" className={`${health.bg} ${health.text} border-0 text-[10px] font-medium px-2 py-0.5 gap-1`}>
+                  <health.Icon className="h-3 w-3" />
+                  {health.label}
+                </Badge>
+                {reservedTotal > 0 && (
+                  <span className="text-[10px] text-muted-foreground">{Math.round(fundedPct)}% funded</span>
+                )}
+              </div>
+              {reservedTotal > 0 && (
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${health.bar}`}
+                    style={{ width: `${fundedPct}%` }}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Reserved / Available row */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <div className="rounded-lg bg-muted/40 border px-3 py-2">
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Reserved</p>
-            <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{formatCurrency(reservedTotal)}</p>
-          </div>
-          <div className="rounded-lg bg-muted/40 border px-3 py-2">
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Available</p>
-            <p className={`text-sm font-bold ${availableBalance < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-              {formatCurrency(availableBalance)}
-            </p>
-          </div>
-        </div>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="rounded-lg bg-muted/40 border px-3 py-2">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Reserved</p>
+                <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{formatCurrency(reservedTotal)}</p>
+              </div>
+              <div className="rounded-lg bg-muted/40 border px-3 py-2">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Available</p>
+                <p className={`text-sm font-bold ${availableBalance < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {formatCurrency(availableBalance)}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Deposit / Withdraw action buttons */}
         <div className="flex gap-2 mb-2">
