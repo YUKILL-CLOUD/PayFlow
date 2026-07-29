@@ -239,44 +239,76 @@ export function generateCalendarEvents(
         })
       }
     } else {
-      // Recurring Fund — show all types on the calendar, including every_payday
-      // For every_payday funds, treat as monthly using due_day for calendar display
-      const displayRecurrenceType = fund.recurrence_type === 'every_payday' ? 'monthly' : fund.recurrence_type
-
-      // For monthly-equivalent display, we may need to generate multiple occurrences across the grid
-      let runnerDate = new Date(gridStart)
-      const seen = new Set<string>()
-
-      while (runnerDate <= gridEnd) {
-        const runnerStr = runnerDate.toISOString().split('T')[0]
-        const nextDue = calculateNextDue(runnerStr, displayRecurrenceType, fund.due_day, fund.recurrence_rule)
-        const nextDueStr = nextDue.toISOString().split('T')[0]
-
-        if (nextDue >= gridStart && nextDue <= gridEnd && !seen.has(nextDueStr)) {
-          seen.add(nextDueStr)
+      // Recurring Fund — show all types on the calendar
+      if (fund.recurrence_type === 'every_payday') {
+        // every_payday funds appear on every scheduled payday date in the grid
+        scheduledPaydayDates.forEach(pd => {
+          const pdStr = pd.toISOString().split('T')[0]
+          // Also include DB payday dates that fall in the grid
           events.push({
-            id: `fund-rec-${fund.id}-${nextDueStr}`,
-            date: nextDueStr,
+            id: `fund-rec-${fund.id}-${pdStr}`,
+            date: pdStr,
             title: fund.name,
             type: 'recurring_fund',
             amount: fund.recurring_amount,
             priority: fund.priority,
             walletId: fund.wallet_id,
-            details: {
-              recurrenceType: fund.recurrence_type
-            },
+            details: { recurrenceType: fund.recurrence_type },
             rawItem: fund
           })
-        }
+        })
+        // Also cover DB payday dates not in scheduledPaydayDates
+        paydays.forEach(p => {
+          const pdStr = p.payday_date
+          if (pdStr >= gridStartStr && pdStr <= gridEndStr) {
+            const alreadyAdded = events.some(e => e.id === `fund-rec-${fund.id}-${pdStr}`)
+            if (!alreadyAdded) {
+              events.push({
+                id: `fund-rec-${fund.id}-${pdStr}`,
+                date: pdStr,
+                title: fund.name,
+                type: 'recurring_fund',
+                amount: fund.recurring_amount,
+                priority: fund.priority,
+                walletId: fund.wallet_id,
+                details: { recurrenceType: fund.recurrence_type },
+                rawItem: fund
+              })
+            }
+          }
+        })
+      } else {
+        // weekly / bi_weekly / monthly / quarterly / yearly
+        let runnerDate = new Date(gridStart)
+        const seen = new Set<string>()
 
-        // Step forward by appropriate interval to find next occurrence
-        if (displayRecurrenceType === 'weekly') {
-          runnerDate.setUTCDate(runnerDate.getUTCDate() + 7)
-        } else if (displayRecurrenceType === 'bi_weekly') {
-          runnerDate.setUTCDate(runnerDate.getUTCDate() + 14)
-        } else {
-          // monthly / quarterly / yearly — one occurrence max per grid
-          break
+        while (runnerDate <= gridEnd) {
+          const runnerStr = runnerDate.toISOString().split('T')[0]
+          const nextDue = calculateNextDue(runnerStr, fund.recurrence_type, fund.due_day, fund.recurrence_rule)
+          const nextDueStr = nextDue.toISOString().split('T')[0]
+
+          if (nextDue >= gridStart && nextDue <= gridEnd && !seen.has(nextDueStr)) {
+            seen.add(nextDueStr)
+            events.push({
+              id: `fund-rec-${fund.id}-${nextDueStr}`,
+              date: nextDueStr,
+              title: fund.name,
+              type: 'recurring_fund',
+              amount: fund.recurring_amount,
+              priority: fund.priority,
+              walletId: fund.wallet_id,
+              details: { recurrenceType: fund.recurrence_type },
+              rawItem: fund
+            })
+          }
+
+          if (fund.recurrence_type === 'weekly') {
+            runnerDate.setUTCDate(runnerDate.getUTCDate() + 7)
+          } else if (fund.recurrence_type === 'bi_weekly') {
+            runnerDate.setUTCDate(runnerDate.getUTCDate() + 14)
+          } else {
+            break // monthly / quarterly / yearly — one occurrence per grid
+          }
         }
       }
     }
